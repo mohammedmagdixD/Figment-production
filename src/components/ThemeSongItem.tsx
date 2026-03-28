@@ -122,7 +122,7 @@ export function ThemeSongItem({ themeString }: ThemeSongItemProps) {
       }
       rightContent={
         !songData?.previewUrl && !isLoading ? (
-          <div className="text-[10px] font-medium text-[var(--tertiary-label)] uppercase tracking-wider px-2 py-1 bg-[var(--tertiary-system-background)] rounded-sm">
+          <div className="text-xs font-medium text-[var(--tertiary-label)] uppercase tracking-wider px-2 py-1 bg-[var(--tertiary-system-background)] rounded-sm">
             No Preview
           </div>
         ) : undefined

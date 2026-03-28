@@ -65,11 +65,11 @@ export function UniversalListItem({
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="font-sf-pro text-[15px] font-semibold text-[var(--label)] truncate">
+        <h4 className="font-sans text-base font-semibold text-[var(--label)] truncate">
           {title}
         </h4>
         {subtitle && (
-          <p className="font-sf-pro text-[13px] text-[var(--secondary-label)] truncate mt-0.5">
+          <p className="font-sans text-sm text-[var(--secondary-label)] truncate mt-0.5">
             {subtitle}
           </p>
         )}

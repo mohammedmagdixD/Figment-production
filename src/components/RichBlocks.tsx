@@ -47,7 +47,7 @@ export function RichBlocks({ blocks }: RichBlocksProps) {
         return (
           <div className="bg-[var(--secondary-system-background)] p-5 rounded-2xl border border-[var(--separator)] shadow-sm flex flex-col justify-center min-h-[160px] group transition-colors cursor-default">
             <AlignLeft className="w-4 h-4 text-[var(--secondary-label)] mb-3 opacity-50" />
-            <p className="font-instrument text-[16px] leading-[140%] text-[var(--label)] whitespace-pre-wrap">
+            <p className="font-serif text-base leading-relaxed text-[var(--label)] whitespace-pre-wrap">
               {block.content}
             </p>
           </div>
@@ -79,10 +79,10 @@ export function RichBlocks({ blocks }: RichBlocksProps) {
                 <ExternalLink className="w-6 h-6 text-[var(--secondary-label)]" />
               </div>
             )}
-            <h3 className="font-instrument font-semibold text-[15px] leading-[130%] text-[var(--label)] mb-1 line-clamp-2">
+            <h3 className="font-serif font-semibold text-base leading-snug text-[var(--label)] mb-1 line-clamp-2">
               {block.title}
             </h3>
-            <p className="font-geist text-[13px] leading-[140%] text-[var(--secondary-label)] line-clamp-2 mb-4">
+            <p className="font-sans text-sm leading-relaxed text-[var(--secondary-label)] line-clamp-2 mb-4">
               {block.description}
             </p>
             <div className="flex items-center justify-between mt-auto pt-3 border-t border-[var(--separator)]">
@@ -95,7 +95,7 @@ export function RichBlocks({ blocks }: RichBlocksProps) {
                     (e.target as HTMLImageElement).style.display = 'none';
                   }}
                 />
-                <span className="font-mono text-[11px] text-[var(--secondary-label)] truncate">{block.domain}</span>
+                <span className="font-mono text-xs text-[var(--secondary-label)] truncate">{block.domain}</span>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-[var(--secondary-label)] shrink-0 group-hover:text-[var(--label)] transition-colors" />
             </div>
@@ -114,10 +114,10 @@ export function RichBlocks({ blocks }: RichBlocksProps) {
             <div className="w-10 h-10 rounded-full bg-white dark:bg-[#1C1C1E] shadow-sm flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
               <LayoutGrid className="w-5 h-5 text-ink-black dark:text-white" />
             </div>
-            <h3 className="font-instrument font-semibold text-[15px] text-ink-black dark:text-white mb-1">
+            <h3 className="font-serif font-semibold text-base text-ink-black dark:text-white mb-1">
               {block.title}
             </h3>
-            <span className="font-mono text-[12px] text-gray dark:text-ios-gray-1">{block.count} blocks</span>
+            <span className="font-mono text-xs text-gray dark:text-ios-gray-1">{block.count} blocks</span>
           </motion.div>
         );
         
@@ -128,7 +128,7 @@ export function RichBlocks({ blocks }: RichBlocksProps) {
 
   return (
     <section className="px-4 py-2">
-      <h2 className="font-instrument text-[18px] font-semibold leading-[140%] text-ink-black dark:text-white mb-4">
+      <h2 className="font-serif text-xl font-semibold leading-relaxed text-ink-black dark:text-white mb-4">
         Canvas
       </h2>
       

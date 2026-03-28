@@ -27,12 +27,7 @@ interface MediaDetailsModalProps {
 export function MediaDetailsModal({ item, onClose, onLogEpisode }: MediaDetailsModalProps) {
   useScrollLock(!!item);
 
-  const [episodes, setEpisodes] = useState<PodcastEpisode[]>([]);
-  const [details, setDetails] = useState<MovieDetails | null>(null);
-  const [animeDetails, setAnimeDetails] = useState<AnimeDetails | null>(null);
-  const [mangaDetails, setMangaDetails] = useState<MangaDetails | null>(null);
-  const [bookDetails, setBookDetails] = useState<any | null>(null);
-  const [audioDetails, setAudioDetails] = useState<UniversalMediaData | null>(null);
+  const [mediaDetails, setMediaDetails] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -48,50 +43,48 @@ export function MediaDetailsModal({ item, onClose, onLogEpisode }: MediaDetailsM
     if (item) {
       setSheetState('half');
       controls.start('half');
+      setIsLoading(true);
       
-      if (item.type === 'podcast') {
-        setIsLoading(true);
-        getPodcastEpisodes(item.id).then(data => {
-          setEpisodes(data);
+      const fetchDetails = async () => {
+        try {
+          let data;
+          switch (item.type) {
+            case 'podcast':
+              data = await getPodcastEpisodes(item.id);
+              break;
+            case 'movie':
+              data = await getMovieDetails(item.id);
+              break;
+            case 'tv':
+              data = await getTvDetails(item.id);
+              break;
+            case 'anime':
+              data = await getAnimeDetails(item.id);
+              break;
+            case 'manga':
+              data = await getMangaDetails(item.id);
+              break;
+            case 'book':
+            case 'webnovel':
+              data = await getBookDetails(item.id);
+              break;
+            case 'song':
+            case 'music':
+            case 'album':
+              data = await itunesAudioAdapter(item);
+              break;
+            default:
+              data = item;
+          }
+          setMediaDetails(data);
+        } catch (error) {
+          console.error("Failed to fetch details", error);
+        } finally {
           setIsLoading(false);
-        });
-      } else if (item.type === 'movie') {
-        setIsLoading(true);
-        getMovieDetails(item.id).then(data => {
-          setDetails(data);
-          setIsLoading(false);
-        });
-      } else if (item.type === 'tv') {
-        setIsLoading(true);
-        getTvDetails(item.id).then(data => {
-          setDetails(data);
-          setIsLoading(false);
-        });
-      } else if (item.type === 'anime') {
-        setIsLoading(true);
-        getAnimeDetails(item.id).then(data => {
-          setAnimeDetails(data);
-          setIsLoading(false);
-        });
-      } else if (item.type === 'manga') {
-        setIsLoading(true);
-        getMangaDetails(item.id).then(data => {
-          setMangaDetails(data);
-          setIsLoading(false);
-        });
-      } else if (item.type === 'book' || item.type === 'webnovel') {
-        setIsLoading(true);
-        getBookDetails(item.id).then(data => {
-          setBookDetails(data);
-          setIsLoading(false);
-        });
-      } else if (item.type === 'song' || item.type === 'music') {
-        setIsLoading(true);
-        itunesAudioAdapter(item).then(data => {
-          setAudioDetails(data);
-          setIsLoading(false);
-        });
-      }
+        }
+      };
+
+      fetchDetails();
     }
   }, [item, controls]);
 
@@ -148,16 +141,16 @@ export function MediaDetailsModal({ item, onClose, onLogEpisode }: MediaDetailsM
             >
               <ArrowLeft className="w-5 h-5" />
             </motion.button>
-            <h2 className="font-sf-pro-display text-[20px] font-semibold text-[var(--label)]">Log Episode</h2>
+            <h2 className="font-sans text-xl font-semibold text-[var(--label)]">Log Episode</h2>
           </div>
           
           <div className="mb-6">
-            <h3 className="font-sf-pro font-semibold text-[16px] text-[var(--label)] line-clamp-2 mb-1">{loggingEpisode.title}</h3>
-            <p className="font-sf-pro text-[14px] text-[var(--secondary-label)] line-clamp-2">{item.title}</p>
+            <h3 className="font-sans font-semibold text-base text-[var(--label)] line-clamp-2 mb-1">{loggingEpisode.title}</h3>
+            <p className="font-sans text-sm text-[var(--secondary-label)] line-clamp-2">{item.title}</p>
           </div>
 
           <div className="mb-8 px-1">
-            <label className="block text-[14px] font-medium text-[var(--label)] mb-3">Rating</label>
+            <label className="block text-sm font-medium text-[var(--label)] mb-3">Rating</label>
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
                 <motion.button 
@@ -177,7 +170,7 @@ export function MediaDetailsModal({ item, onClose, onLogEpisode }: MediaDetailsM
           </div>
 
           <div className="mb-auto px-1">
-            <label className="block text-[14px] font-medium text-[var(--label)] mb-3">Date</label>
+            <label className="block text-sm font-medium text-[var(--label)] mb-3">Date</label>
             <IOSDatePicker 
               value={date} 
               onChange={setDate}
@@ -189,7 +182,7 @@ export function MediaDetailsModal({ item, onClose, onLogEpisode }: MediaDetailsM
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 600, damping: 35 }}
             onClick={handleLogEpisode}
-            className="w-full bg-[var(--label)] text-[var(--system-background)] rounded-xl py-4 font-medium text-[15px] hover:opacity-90 transition-colors mt-8"
+            className="w-full bg-[var(--label)] text-[var(--system-background)] rounded-xl py-4 font-medium text-base hover:opacity-90 transition-colors mt-8"
           >
             Save to Diary
           </motion.button>
@@ -207,20 +200,20 @@ export function MediaDetailsModal({ item, onClose, onLogEpisode }: MediaDetailsM
 
     let normalizedData: UniversalMediaData | null = null;
 
-    if (item.type === 'movie' && details) {
-      normalizedData = tmdbMovieAdapter(details, item);
-    } else if (item.type === 'tv' && details) {
-      normalizedData = tmdbTvAdapter(details, item);
-    } else if (item.type === 'anime' && animeDetails) {
-      normalizedData = malAnimeAdapter(animeDetails);
-    } else if (item.type === 'manga' && mangaDetails) {
-      normalizedData = malMangaAdapter(mangaDetails);
-    } else if (item.type === 'podcast') {
-      normalizedData = itunesPodcastAdapter(episodes, item, setLoggingEpisode, searchQuery, setSearchQuery);
-    } else if ((item.type === 'book' || item.type === 'webnovel') && bookDetails) {
-      normalizedData = googleBooksAdapter(bookDetails, item.type);
-    } else if ((item.type === 'music' || item.type === 'song' || item.type === 'album') && audioDetails) {
-      normalizedData = audioDetails;
+    if (item.type === 'movie' && mediaDetails) {
+      normalizedData = tmdbMovieAdapter(mediaDetails, item);
+    } else if (item.type === 'tv' && mediaDetails) {
+      normalizedData = tmdbTvAdapter(mediaDetails, item);
+    } else if (item.type === 'anime' && mediaDetails) {
+      normalizedData = malAnimeAdapter(mediaDetails);
+    } else if (item.type === 'manga' && mediaDetails) {
+      normalizedData = malMangaAdapter(mediaDetails);
+    } else if (item.type === 'podcast' && mediaDetails) {
+      normalizedData = itunesPodcastAdapter(mediaDetails, item, setLoggingEpisode, searchQuery, setSearchQuery);
+    } else if ((item.type === 'book' || item.type === 'webnovel') && mediaDetails) {
+      normalizedData = googleBooksAdapter(mediaDetails, item.type);
+    } else if ((item.type === 'music' || item.type === 'song' || item.type === 'album') && mediaDetails) {
+      normalizedData = mediaDetails;
     } else {
       normalizedData = genericAdapter(item);
     }

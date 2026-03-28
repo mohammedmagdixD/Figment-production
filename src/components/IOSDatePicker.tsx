@@ -61,7 +61,7 @@ export function IOSDatePicker({ value, onChange }: IOSDatePickerProps) {
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl p-3.5 text-[15px] font-geist text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all text-left flex justify-between items-center"
+        className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl p-3.5 text-base font-sans text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all text-left flex justify-between items-center"
       >
         <span>{monthNames[selectedDate.getMonth()]} {selectedDate.getDate()}, {selectedDate.getFullYear()}</span>
       </button>
@@ -72,7 +72,7 @@ export function IOSDatePicker({ value, onChange }: IOSDatePickerProps) {
             <button type="button" onClick={handlePrevMonth} className="p-1 hover:bg-light dark:hover:bg-[#2C2C2E] rounded-full transition-colors">
               <ChevronLeft className="w-5 h-5 text-ink-black dark:text-white" />
             </button>
-            <div className="font-geist font-semibold text-[15px] text-ink-black dark:text-white">
+            <div className="font-sans font-semibold text-base text-ink-black dark:text-white">
               {monthNames[viewDate.getMonth()]} {viewDate.getFullYear()}
             </div>
             <button type="button" onClick={handleNextMonth} className="p-1 hover:bg-light dark:hover:bg-[#2C2C2E] rounded-full transition-colors">
@@ -82,7 +82,7 @@ export function IOSDatePicker({ value, onChange }: IOSDatePickerProps) {
 
           <div className="grid grid-cols-7 gap-1 mb-2">
             {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
-              <div key={i} className="text-center text-[12px] font-medium text-gray dark:text-ios-gray-1 uppercase">
+              <div key={i} className="text-center text-xs font-medium text-gray dark:text-ios-gray-1 uppercase">
                 {day}
               </div>
             ))}
@@ -105,7 +105,7 @@ export function IOSDatePicker({ value, onChange }: IOSDatePickerProps) {
                   type="button"
                   disabled={isFuture}
                   onClick={() => handleSelectDate(day)}
-                  className={`h-8 w-8 mx-auto rounded-full flex items-center justify-center text-[14px] font-geist transition-colors
+                  className={`h-8 w-8 mx-auto rounded-full flex items-center justify-center text-sm font-sans transition-colors
                     ${isFuture ? 'text-gray/30 dark:text-ios-gray-1/30 cursor-not-allowed' : 'hover:bg-light dark:hover:bg-[#2C2C2E] text-ink-black dark:text-white'}
                     ${isSelected ? 'bg-ink-black dark:bg-white text-white dark:text-ink-black hover:bg-ink-black dark:hover:bg-white' : ''}
                     ${!isSelected && isToday ? 'text-blue-500 dark:text-ios-blue font-semibold' : ''}

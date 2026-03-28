@@ -136,7 +136,7 @@ export function RecommendationModal({ isOpen, onClose, onSubmit }: Recommendatio
             </div>
             <div className="flex items-center justify-between p-6 border-b border-black/5 dark:border-white/10">
               <div>
-                <h2 className="text-2xl font-instrument font-semibold text-ink-black dark:text-white">Leave a Recommendation</h2>
+                <h2 className="text-2xl font-serif font-semibold text-ink-black dark:text-white">Leave a Recommendation</h2>
                 <p className="text-gray dark:text-ios-gray-1 text-sm mt-1">Suggest something for the profile owner</p>
               </div>
               <motion.button
@@ -245,7 +245,7 @@ export function RecommendationModal({ isOpen, onClose, onSubmit }: Recommendatio
                        {MEDIA_TYPES.find(t => t.id === activeType)?.icon}
                        {MEDIA_TYPES.find(t => t.id === activeType)?.label}
                     </div>
-                    <h4 className="font-instrument text-2xl font-semibold text-ink-black dark:text-white line-clamp-2">{selectedItem.title}</h4>
+                    <h4 className="font-serif text-2xl font-semibold text-ink-black dark:text-white line-clamp-2">{selectedItem.title}</h4>
                     <p className="text-gray dark:text-ios-gray-1 mt-1.5 line-clamp-1">{selectedItem.subtitle}</p>
                   </div>
                   <motion.button

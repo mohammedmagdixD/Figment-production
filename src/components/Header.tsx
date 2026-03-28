@@ -94,7 +94,7 @@ export function Header({ profile, onRecommendClick }: HeaderProps) {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="mt-5 font-instrument text-[26px] font-semibold leading-[120%] text-[var(--label)] tracking-tight"
+          className="mt-5 font-serif text-3xl font-bold leading-tight text-[var(--label)] tracking-tight"
         >
           {profile.name}
         </motion.h1>
@@ -103,7 +103,7 @@ export function Header({ profile, onRecommendClick }: HeaderProps) {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.15 }}
-          className="font-geist text-[15px] font-medium leading-[140%] text-[var(--secondary-label)] mt-1"
+          className="font-sans text-base font-medium leading-relaxed text-[var(--secondary-label)] mt-1"
         >
           {profile.handle}
         </motion.p>
@@ -112,7 +112,7 @@ export function Header({ profile, onRecommendClick }: HeaderProps) {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="mt-4 font-geist text-[16px] font-medium leading-[150%] text-[var(--secondary-label)] opacity-80 max-w-[290px]"
+          className="mt-4 font-sans text-base font-medium leading-relaxed text-[var(--secondary-label)] opacity-80 max-w-[290px]"
         >
           {profile.bio}
         </motion.p>

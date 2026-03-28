@@ -43,13 +43,13 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-light sm:bg-[#E5E5E5] flex items-center justify-center p-4 font-geist">
+        <div className="min-h-screen bg-light sm:bg-[#E5E5E5] flex items-center justify-center p-4 font-sans">
           <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-sm text-center border border-black/5">
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-instrument font-semibold text-ink-black mb-3">Something went wrong</h2>
-            <p className="text-gray text-[15px] mb-8">
+            <h2 className="text-2xl font-serif font-semibold text-ink-black mb-3">Something went wrong</h2>
+            <p className="text-gray text-sm mb-8">
               We're sorry, but there was an error loading this content. Please try refreshing the page.
             </p>
             <button
@@ -178,7 +178,7 @@ export default function App() {
 
     return (
     <ErrorBoundary>
-      <div className="min-h-[100dvh] bg-light dark:bg-[var(--secondary-system-background)] sm:bg-[#E5E5E5] sm:dark:bg-[var(--secondary-system-background)] text-[var(--label)] font-geist sm:pb-12 selection:bg-quiet-sky dark:selection:bg-ios-blue/30">
+      <div className="min-h-[100dvh] bg-light dark:bg-[var(--secondary-system-background)] sm:bg-[#E5E5E5] sm:dark:bg-[var(--secondary-system-background)] text-[var(--label)] font-sans sm:pb-12 selection:bg-quiet-sky dark:selection:bg-ios-blue/30">
         <div className="max-w-[428px] mx-auto bg-[var(--system-background)] dark:bg-[var(--secondary-system-background)] h-[100dvh] sm:h-[850px] shadow-sm sm:rounded-[40px] sm:my-8 sm:overflow-hidden sm:border-[8px] sm:border-ink-black dark:sm:border-[#2C2C2E] relative flex flex-col">
           {/* iOS Status Bar Spacer (simulated for desktop view) */}
           <div className="hidden sm:block h-6 w-full bg-[var(--system-background)] dark:bg-[var(--secondary-system-background)] shrink-0" />
@@ -206,7 +206,7 @@ export default function App() {
 
                 <section className="py-2 bg-[var(--system-background)] dark:bg-[var(--secondary-system-background)]">
                   <div className="flex items-center justify-between px-4 mb-3">
-                    <h2 className="font-instrument text-[18px] font-semibold leading-[140%] text-[var(--label)]">
+                    <h2 className="font-serif text-lg font-semibold leading-relaxed text-[var(--label)]">
                       Albums
                     </h2>
                   </div>
@@ -219,15 +219,15 @@ export default function App() {
                               <img src={album.coverImage} alt={album.title} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-black/5 dark:bg-white/5">
-                                <span className="font-instrument text-2xl text-[var(--secondary-label)]">{album.title.charAt(0)}</span>
+                                <span className="font-serif text-2xl text-[var(--secondary-label)]">{album.title.charAt(0)}</span>
                               </div>
                             )}
                           </div>
                           <div className="w-full">
-                            <h3 className="font-geist text-[15px] font-semibold leading-[120%] text-[var(--label)] card-text-truncate">
+                            <h3 className="font-sans text-base font-semibold leading-tight text-[var(--label)] card-text-truncate">
                               {album.title}
                             </h3>
-                            <p className="font-geist text-[14px] font-medium leading-[140%] text-[var(--secondary-label)] card-text-truncate mt-0.5">
+                            <p className="font-sans text-sm font-medium leading-relaxed text-[var(--secondary-label)] card-text-truncate mt-0.5">
                               {album.tracks.length} {album.tracks.length === 1 ? 'track' : 'tracks'}
                             </p>
                           </div>
@@ -235,7 +235,7 @@ export default function App() {
                       ))}
                     </div>
                   ) : (
-                    <div className="px-4 py-8 text-center text-[var(--secondary-label)] text-[14px] font-geist">
+                    <div className="px-4 py-8 text-center text-[var(--secondary-label)] text-sm font-sans">
                       No albums created yet.
                     </div>
                   )}

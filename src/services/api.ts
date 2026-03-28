@@ -404,8 +404,42 @@ export async function getBookDetails(id: string): Promise<any | null> {
     if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
     return await res.json();
   } catch (e) {
-    console.error('Failed to fetch book details:', e);
-    return null;
+    console.warn('Google Books API failed, trying OpenLibrary fallback', e);
+    try {
+      const res = await fetch(`https://openlibrary.org/works/${id}.json`);
+      if (!res.ok) throw new Error(`OpenLibrary API error: ${res.status}`);
+      const data = await res.json();
+      
+      let authorNames = ['Unknown Author'];
+      if (data.authors && data.authors.length > 0) {
+        try {
+          const authorRes = await fetch(`https://openlibrary.org${data.authors[0].author.key}.json`);
+          if (authorRes.ok) {
+            const authorData = await authorRes.json();
+            authorNames = [authorData.name];
+          }
+        } catch (authorErr) {
+          console.warn('Failed to fetch author details from OpenLibrary', authorErr);
+        }
+      }
+
+      return {
+        id: id,
+        volumeInfo: {
+          title: data.title,
+          authors: authorNames,
+          description: typeof data.description === 'string' ? data.description : (data.description?.value || ''),
+          imageLinks: {
+            thumbnail: data.covers && data.covers.length > 0 ? `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg` : null
+          },
+          publishedDate: data.first_publish_date,
+          categories: data.subjects
+        }
+      };
+    } catch (olErr) {
+      console.error('Failed to fetch book details from OpenLibrary:', olErr);
+      return null;
+    }
   }
 }
 
@@ -504,20 +538,40 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
     }
 
     if (type === 'book' || type === 'webnovel') {
-      const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15`);
-      if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
-      const data = await res.json();
-      return (data.items || []).map((item: any) => {
-        const info = item.volumeInfo;
-        return {
-          id: item.id,
-          title: info.title,
-          subtitle: info.authors ? info.authors.join(', ') : 'Unknown Author',
-          image: info.imageLinks?.thumbnail?.replace('http:', 'https:') || 'https://via.placeholder.com/300x400?text=No+Cover',
-          url: info.infoLink,
-          description: info.description
-        };
-      });
+      try {
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15`);
+        if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
+        const data = await res.json();
+        return (data.items || []).map((item: any) => {
+          const info = item.volumeInfo;
+          return {
+            id: item.id,
+            title: info.title,
+            subtitle: info.authors ? info.authors.join(', ') : 'Unknown Author',
+            image: info.imageLinks?.thumbnail?.replace('http:', 'https:') || 'https://via.placeholder.com/300x400?text=No+Cover',
+            url: info.infoLink,
+            description: info.description
+          };
+        });
+      } catch (e) {
+        console.warn('Google Books API failed, falling back to OpenLibrary', e);
+        try {
+          const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&limit=15`);
+          if (!res.ok) throw new Error(`OpenLibrary API error: ${res.status}`);
+          const data = await res.json();
+          return (data.docs || []).map((item: any) => ({
+            id: item.key.replace('/works/', ''),
+            title: item.title,
+            subtitle: item.author_name ? item.author_name.join(', ') : 'Unknown Author',
+            image: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : 'https://via.placeholder.com/300x400?text=No+Cover',
+            url: `https://openlibrary.org${item.key}`,
+            description: item.first_sentence ? (typeof item.first_sentence === 'string' ? item.first_sentence : item.first_sentence[0]) : ''
+          }));
+        } catch (olErr) {
+          console.error(`Error searching ${type} on OpenLibrary:`, olErr);
+          return [];
+        }
+      }
     }
 
     if (type === 'anime' || type === 'manga') {

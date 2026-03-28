@@ -91,10 +91,10 @@ export function MediaCard({
         )}
       </div>
       <div className={`w-full ${(sectionType === 'music' || sectionType === 'song') ? 'text-center px-1' : ''}`}>
-        <h3 className="font-geist text-[15px] font-semibold leading-[120%] text-[var(--label)] card-text-truncate">
+        <h3 className="font-sans text-base font-semibold leading-tight text-[var(--label)] card-text-truncate">
           {item.title || item.header?.title}
         </h3>
-        <p className="font-geist text-[14px] font-medium leading-[140%] text-[var(--secondary-label)] card-text-truncate mt-0.5">
+        <p className="font-sans text-sm font-medium leading-relaxed text-[var(--secondary-label)] card-text-truncate mt-0.5">
           {item.subtitle || item.header?.subtitle}
         </p>
       </div>

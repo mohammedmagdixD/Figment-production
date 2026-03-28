@@ -125,7 +125,7 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
             </div>
             <div className="px-5 pb-5 pt-2 border-b border-black/5 dark:border-white/10 flex flex-col gap-4 shrink-0">
               <div className="flex items-center justify-between">
-                <h2 className="font-instrument text-[20px] font-semibold text-ink-black dark:text-white">
+                <h2 className="font-serif text-xl font-semibold text-ink-black dark:text-white">
                   Add to {sectionTitle}
                 </h2>
                 <motion.button 
@@ -145,7 +145,7 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
                   placeholder={sectionType === 'tv' ? 'Search for TV Shows...' : `Search for ${sectionType === 'music' || sectionType === 'anime' || sectionType === 'manga' ? sectionType : sectionType + 's'}...`}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 text-[15px] font-geist text-ink-black dark:text-white placeholder:text-gray dark:placeholder:text-ios-gray-1 focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all"
+                  className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl py-3 pl-11 pr-4 text-base font-sans text-ink-black dark:text-white placeholder:text-gray dark:placeholder:text-ios-gray-1 focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all"
                   autoFocus
                 />
               </div>
@@ -158,19 +158,19 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
                     <button onClick={() => setLogItem(null)} className="w-11 h-11 flex items-center justify-center bg-light dark:bg-[#2C2C2E] rounded-full text-dark-gray dark:text-ios-gray-1 hover:text-ink-black dark:hover:text-white transition-colors">
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h2 className="font-instrument text-[20px] font-semibold text-ink-black dark:text-white">Log Activity</h2>
+                    <h2 className="font-serif text-xl font-semibold text-ink-black dark:text-white">Log Activity</h2>
                   </div>
                   
                   <div className="flex gap-4 mb-8 bg-light dark:bg-[#2C2C2E] p-4 rounded-2xl border border-black/5 dark:border-white/10">
                     <img src={logItem.image} alt={logItem.title} className="w-16 h-24 object-cover rounded-lg shadow-sm bg-white dark:bg-[#3A3A3C]" />
                     <div className="flex-1 min-w-0 py-1">
-                      <h3 className="font-geist font-semibold text-[16px] text-ink-black dark:text-white line-clamp-2 mb-1">{logItem.title}</h3>
-                      <p className="font-geist text-[14px] text-gray dark:text-ios-gray-1 line-clamp-2">{logItem.subtitle}</p>
+                      <h3 className="font-sans font-semibold text-base text-ink-black dark:text-white line-clamp-2 mb-1">{logItem.title}</h3>
+                      <p className="font-sans text-sm text-gray dark:text-ios-gray-1 line-clamp-2">{logItem.subtitle}</p>
                     </div>
                   </div>
 
                   <div className="mb-8 px-1">
-                    <label className="block text-[14px] font-medium text-ink-black dark:text-white mb-3">Rating</label>
+                    <label className="block text-sm font-medium text-ink-black dark:text-white mb-3">Rating</label>
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button key={star} onClick={() => setRating(star)} className="focus:outline-none transition-transform active:scale-90">
@@ -181,7 +181,7 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
                   </div>
 
                   <div className="mb-auto px-1">
-                    <label className="block text-[14px] font-medium text-ink-black dark:text-white mb-3">Date</label>
+                    <label className="block text-sm font-medium text-ink-black dark:text-white mb-3">Date</label>
                     <IOSDatePicker 
                       value={date} 
                       onChange={setDate}
@@ -193,7 +193,7 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
                       onAdd(logItem, { rating, date });
                       onClose();
                     }}
-                    className="w-full bg-ink-black dark:bg-white text-white dark:text-ink-black rounded-xl py-4 font-medium text-[15px] hover:bg-ink-black/90 dark:hover:bg-white/90 transition-colors mt-4"
+                    className="w-full bg-ink-black dark:bg-white text-white dark:text-ink-black rounded-xl py-4 font-medium text-base hover:bg-ink-black/90 dark:hover:bg-white/90 transition-colors mt-4"
                   >
                     Save to Diary
                   </button>
@@ -230,10 +230,10 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-geist font-medium text-[15px] text-ink-black dark:text-white truncate">
+                        <h3 className="font-sans font-medium text-base text-ink-black dark:text-white truncate">
                           {item.title}
                         </h3>
-                        <p className="font-geist text-[13px] text-gray dark:text-ios-gray-1 truncate">
+                        <p className="font-sans text-sm text-gray dark:text-ios-gray-1 truncate">
                           {item.subtitle}
                         </p>
                       </div>
@@ -246,15 +246,15 @@ export function AddMediaModal({ isOpen, onClose, sectionType, sectionTitle, onAd
                   ))}
                 </div>
               ) : query.trim().length > 2 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-gray dark:text-ios-gray-1 font-geist text-[14px]">
+                <div className="flex flex-col items-center justify-center h-32 text-gray dark:text-ios-gray-1 font-sans text-sm">
                   No results found.
                 </div>
               ) : query.trim().length > 0 ? (
-                <div className="flex flex-col items-center justify-center h-32 text-gray dark:text-ios-gray-1 font-geist text-[14px] opacity-60">
+                <div className="flex flex-col items-center justify-center h-32 text-gray dark:text-ios-gray-1 font-sans text-sm opacity-60">
                   Please type more to search...
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-32 text-gray dark:text-ios-gray-1 font-geist text-[14px] opacity-60">
+                <div className="flex flex-col items-center justify-center h-32 text-gray dark:text-ios-gray-1 font-sans text-sm opacity-60">
                   Type to start searching...
                 </div>
               )}

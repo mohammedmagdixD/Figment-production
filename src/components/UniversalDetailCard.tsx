@@ -1,9 +1,10 @@
 import { motion } from 'motion/react';
-import { Play, Star, ExternalLink, Headphones, BookOpen, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Play, Star, ExternalLink, Headphones, BookOpen, Calendar, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { UniversalMediaData } from '../types/universal';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MediaCard } from './MediaCard';
 import { MediaDetailsModal } from './MediaDetailsModal';
+import { SpotifyIcon, AppleMusicIcon, YouTubeMusicIcon, TidalIcon, DeezerIcon, SoundCloudIcon } from './StreamingIcons';
 
 interface UniversalDetailCardProps {
   data: UniversalMediaData;
@@ -13,7 +14,28 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<any | null>(null);
+  const [relatedLists, setRelatedLists] = useState<{ listTitle: string; items: UniversalMediaData[] }[]>(data.relatedLists || []);
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false);
+  const [streamingLinks, setStreamingLinks] = useState<any | null>(data.streamingLinks || null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    setStreamingLinks(data.streamingLinks || null);
+  }, [data.streamingLinks]);
+
+  useEffect(() => {
+    if (data.fetchRelatedLists && (!data.relatedLists || data.relatedLists.length === 0)) {
+      setIsLoadingRelated(true);
+      data.fetchRelatedLists()
+        .then(lists => {
+          setRelatedLists(lists);
+        })
+        .catch(err => console.debug("Failed to fetch related lists", err))
+        .finally(() => setIsLoadingRelated(false));
+    } else {
+      setRelatedLists(data.relatedLists || []);
+    }
+  }, [data]);
 
   const togglePlay = (url: string, id: string) => {
     if (playingId === id) {
@@ -41,6 +63,12 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
             alt={data.header.title} 
             className={`w-full h-full object-cover ${data.images.backdropFallback ? 'opacity-80 blur-[40px] scale-125' : 'opacity-90'}`}
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              if (target.src.includes('maxresdefault.jpg')) {
+                target.src = target.src.replace('maxresdefault.jpg', 'hqdefault.jpg');
+              }
+            }}
           />
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--system-background)] via-[var(--system-background)]/20 to-transparent" />
@@ -84,7 +112,7 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
           <div className="flex items-center gap-6 mb-6 pb-6 border-b border-[var(--separator)]">
             {data.userStats.rating !== undefined && (
               <div>
-                <div className="text-[12px] font-medium text-[var(--secondary-label)] uppercase tracking-wider mb-1.5">Your Rating</div>
+                <div className="text-xs font-medium text-[var(--secondary-label)] uppercase tracking-wider mb-1.5">Your Rating</div>
                 <div className="flex items-center gap-1 text-[var(--label)]">
                   {[...Array(5)].map((_, i) => (
                     <Star key={i} className={`w-4 h-4 ${i < data.userStats!.rating! ? 'fill-current' : 'text-[var(--separator)] fill-transparent'}`} />
@@ -94,8 +122,8 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
             )}
             {data.userStats.dateAdded && (
               <div>
-                <div className="text-[12px] font-medium text-[var(--secondary-label)] uppercase tracking-wider mb-1.5">Date Added</div>
-                <div className="flex items-center gap-1.5 text-[var(--label)] font-medium text-[14px]">
+                <div className="text-xs font-medium text-[var(--secondary-label)] uppercase tracking-wider mb-1.5">Date Added</div>
+                <div className="flex items-center gap-1.5 text-[var(--label)] font-medium text-sm">
                   <Calendar className="w-4 h-4 text-[var(--secondary-label)]" />
                   {new Date(data.userStats.dateAdded).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
                 </div>
@@ -105,30 +133,23 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
         )}
 
         <div className="mb-4">
-          <h2 className="font-sf-pro text-[24px] font-bold leading-[120%] text-[var(--label)] mb-1">
+          <h2 className="font-sans text-2xl font-bold leading-tight text-[var(--label)] mb-1">
             {data.header.title}
           </h2>
           {data.header.subtitle && (
-            <p className="font-sf-pro text-[16px] text-[var(--secondary-label)]">
+            <p className="font-sans text-base text-[var(--secondary-label)]">
               {data.header.subtitle}
             </p>
-          )}
-          {data.secondaryActionButton?.type === 'audio' && (
-            <div className="mt-4">
-              <audio controls className="w-full h-10 rounded-full" src={data.secondaryActionButton.payload}>
-                Your browser does not support the audio element.
-              </audio>
-            </div>
           )}
         </div>
 
         {/* Stats & Metadata in a single line */}
-        <div className="flex flex-wrap items-center gap-2.5 mb-6 text-[15px] font-medium text-[var(--secondary-label)]">
+        <div className="flex flex-wrap items-center gap-2.5 mb-6 text-base font-medium text-[var(--secondary-label)]">
           {data.metadata.map((meta, i) => (
             <div key={`meta-${i}`} className="flex items-center gap-2.5">
               {i > 0 && <span>•</span>}
               {meta.label === 'MPA' ? (
-                <span className="px-1.5 py-0.5 border border-[var(--secondary-label)] rounded-[4px] text-[12px] leading-none font-semibold uppercase tracking-wider">
+                <span className="px-1.5 py-0.5 border border-[var(--secondary-label)] rounded-[4px] text-xs leading-none font-semibold uppercase tracking-wider">
                   {meta.value}
                 </span>
               ) : (
@@ -149,6 +170,42 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
           ))}
         </div>
 
+        {/* Streaming Platforms */}
+        {streamingLinks && (
+          <div className="flex items-center gap-4 mb-6">
+            {streamingLinks.spotify && (
+              <a href={streamingLinks.spotify.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+                <SpotifyIcon className="w-6 h-6" />
+              </a>
+            )}
+            {streamingLinks.appleMusic && (
+              <a href={streamingLinks.appleMusic.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+                <AppleMusicIcon className="w-6 h-6" />
+              </a>
+            )}
+            {streamingLinks.youtubeMusic && (
+              <a href={streamingLinks.youtubeMusic.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+                <YouTubeMusicIcon className="w-6 h-6" />
+              </a>
+            )}
+            {streamingLinks.tidal && (
+              <a href={streamingLinks.tidal.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+                <TidalIcon className="w-6 h-6" />
+              </a>
+            )}
+            {streamingLinks.deezer && (
+              <a href={streamingLinks.deezer.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+                <DeezerIcon className="w-6 h-6" />
+              </a>
+            )}
+            {streamingLinks.soundcloud && (
+              <a href={streamingLinks.soundcloud.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+                <SoundCloudIcon className="w-6 h-6" />
+              </a>
+            )}
+          </div>
+        )}
+
         {/* Where to Watch */}
         {data.scrollableSections.watchProviders && data.scrollableSections.watchProviders.length > 0 && (
           <div className="mb-6">
@@ -166,22 +223,22 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
         {data.description && (
           <div className="mb-8">
             {data.tagline && (
-              <p className="font-sf-pro text-[16px] font-medium text-[var(--label)] mb-2">
+              <p className="font-sans text-base font-medium text-[var(--label)] mb-2">
                 {data.tagline}
               </p>
             )}
             {(data.mediaType === 'song' || data.mediaType === 'music') ? (
-              <p className="font-sf-pro text-[18px] font-bold leading-[140%] text-[var(--label)]">
+              <p className="font-sans text-lg font-bold leading-relaxed text-[var(--label)]">
                 {data.description}
               </p>
             ) : (
               <div className="relative">
-                <p className={`font-sf-pro text-[15px] leading-[150%] text-[var(--secondary-label)] ${isDescriptionExpanded ? '' : 'line-clamp-3'}`}>
+                <p className={`font-sans text-base leading-relaxed text-[var(--secondary-label)] ${isDescriptionExpanded ? '' : 'line-clamp-3'}`}>
                   {data.description}
                 </p>
                 <button 
                   onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-                  className="text-[15px] font-medium text-[var(--ios-blue)] mt-1 flex items-center gap-1"
+                  className="text-base font-medium text-[var(--ios-blue)] mt-1 flex items-center gap-1"
                 >
                   {isDescriptionExpanded ? 'Less' : 'More'}
                   {isDescriptionExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -195,7 +252,7 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
         {data.scrollableSections.genres && data.scrollableSections.genres.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-8">
             {data.scrollableSections.genres.map((genre, i) => (
-              <span key={i} className="px-3 py-1 bg-[var(--secondary-system-background)] text-[var(--label)] rounded-full text-[13px] font-medium">
+              <span key={i} className="px-3 py-1 bg-[var(--secondary-system-background)] text-[var(--label)] rounded-full text-sm font-medium">
                 {genre}
               </span>
             ))}
@@ -205,7 +262,7 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
         {/* 4. Cast */}
         {data.scrollableSections.cast && data.scrollableSections.cast.length > 0 && (
           <div className="mb-8">
-            <h3 className="font-sf-pro text-[20px] font-bold text-[var(--label)] mb-4">Cast & Characters</h3>
+            <h3 className="font-sans text-xl font-bold text-[var(--label)] mb-4">Cast & Characters</h3>
             <div className="horizontal-scroll-container hide-scrollbar -mx-6 px-6 pb-4">
               {data.scrollableSections.cast.map((member, i) => (
                 <div key={i} className="flex flex-col items-center w-[88px] shrink-0 gap-2">
@@ -213,16 +270,16 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
                     {member.imageUrl ? (
                       <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[24px] text-[var(--tertiary-label)]">
+                      <div className="w-full h-full flex items-center justify-center text-2xl text-[var(--tertiary-label)]">
                         {member.name.charAt(0)}
                       </div>
                     )}
                   </div>
                   <div className="text-center w-full">
-                    <p className="font-sf-pro text-[12px] font-medium text-[var(--label)] leading-[120%] line-clamp-2 mb-0.5">
+                    <p className="font-sans text-xs font-medium text-[var(--label)] leading-tight line-clamp-2 mb-0.5">
                       {member.name}
                     </p>
-                    <p className="font-sf-pro text-[11px] text-[var(--secondary-label)] leading-[120%] line-clamp-2">
+                    <p className="font-sans text-xs text-[var(--secondary-label)] leading-tight line-clamp-2">
                       {member.role}
                     </p>
                   </div>
@@ -232,26 +289,16 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
           </div>
         )}
 
-        {/* 5. Extras */}
-        {data.scrollableSections.extras && data.scrollableSections.extras.length > 0 && (
-          <div className="flex flex-col gap-8 mb-8">
-            {data.scrollableSections.extras.map((extra, i) => (
-              <div key={i}>
-                {extra.title && <h3 className="font-sf-pro text-[20px] font-bold text-[var(--label)] mb-4">{extra.title}</h3>}
-                <div className="flex flex-col">
-                  {extra.data}
-                </div>
-              </div>
-            ))}
+        {/* 5. Related Lists */}
+        {isLoadingRelated ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-8 h-8 text-[var(--secondary-label)] animate-spin" />
           </div>
-        )}
-
-        {/* 6. Related Lists */}
-        {data.relatedLists && data.relatedLists.length > 0 && (
+        ) : relatedLists && relatedLists.length > 0 && (
           <div className="flex flex-col gap-8 mb-8">
-            {data.relatedLists.map((list, i) => (
+            {relatedLists.map((list, i) => (
               <div key={i}>
-                <h3 className="font-sf-pro text-[20px] font-bold text-[var(--label)] mb-4">{list.listTitle}</h3>
+                <h3 className="font-sans text-xl font-bold text-[var(--label)] mb-4">{list.listTitle}</h3>
                 <div className="horizontal-scroll-container hide-scrollbar snap-x snap-mandatory -mx-6 px-6 pb-4">
                   {list.items.map((item, index) => (
                     <MediaCard
@@ -264,6 +311,20 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
                       onPlayToggle={togglePlay}
                     />
                   ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 6. Extras */}
+        {data.scrollableSections.extras && data.scrollableSections.extras.length > 0 && (
+          <div className="flex flex-col gap-8 mb-8">
+            {data.scrollableSections.extras.map((extra, i) => (
+              <div key={i}>
+                {extra.title && <h3 className="font-sans text-xl font-bold text-[var(--label)] mb-4">{extra.title}</h3>}
+                <div className="flex flex-col">
+                  {extra.data}
                 </div>
               </div>
             ))}

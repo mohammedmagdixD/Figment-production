@@ -63,7 +63,7 @@ export function AddToAlbumModal({ item, albums, onClose, onAddToAlbum, onCreateA
           </div>
 
           <div className="flex items-center justify-between p-4 border-b border-black/5 dark:border-white/10 mt-4 sm:mt-0">
-            <h2 className="font-instrument text-[20px] font-semibold text-ink-black dark:text-white">
+            <h2 className="font-serif text-xl font-semibold text-ink-black dark:text-white">
               {isCreating ? 'Create New Album' : 'Add to Album'}
             </h2>
             <button 
@@ -78,27 +78,27 @@ export function AddToAlbumModal({ item, albums, onClose, onAddToAlbum, onCreateA
             {isCreating ? (
               <form onSubmit={handleCreate} className="space-y-4">
                 <div>
-                  <label className="block text-[14px] font-medium text-ink-black dark:text-white mb-1">Title</label>
+                  <label className="block text-sm font-medium text-ink-black dark:text-white mb-1">Title</label>
                   <input
                     type="text"
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl px-4 py-3 text-[15px] font-geist text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all placeholder:text-gray dark:placeholder:text-ios-gray-1"
+                    className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl px-4 py-3 text-base font-sans text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all placeholder:text-gray dark:placeholder:text-ios-gray-1"
                     placeholder="E.g., Summer Vibes"
                     autoFocus
                   />
                 </div>
                 <div>
-                  <label className="block text-[14px] font-medium text-ink-black dark:text-white mb-1">Description (Optional)</label>
+                  <label className="block text-sm font-medium text-ink-black dark:text-white mb-1">Description (Optional)</label>
                   <textarea
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
-                    className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl px-4 py-3 text-[15px] font-geist text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all resize-none h-24 placeholder:text-gray dark:placeholder:text-ios-gray-1"
+                    className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl px-4 py-3 text-base font-sans text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all resize-none h-24 placeholder:text-gray dark:placeholder:text-ios-gray-1"
                     placeholder="What's this album about?"
                   />
                 </div>
                 <div>
-                  <label className="block text-[14px] font-medium text-ink-black dark:text-white mb-1">Cover Image URL (Optional)</label>
+                  <label className="block text-sm font-medium text-ink-black dark:text-white mb-1">Cover Image URL (Optional)</label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <ImageIcon className="h-5 w-5 text-gray dark:text-ios-gray-1" />
@@ -107,7 +107,7 @@ export function AddToAlbumModal({ item, albums, onClose, onAddToAlbum, onCreateA
                       type="url"
                       value={newCover}
                       onChange={(e) => setNewCover(e.target.value)}
-                      className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-[15px] font-geist text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all placeholder:text-gray dark:placeholder:text-ios-gray-1"
+                      className="w-full bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 rounded-xl pl-10 pr-4 py-3 text-base font-sans text-ink-black dark:text-white focus:outline-none focus:ring-2 focus:ring-ink-black/10 dark:focus:ring-white/10 transition-all placeholder:text-gray dark:placeholder:text-ios-gray-1"
                       placeholder="https://..."
                     />
                   </div>
@@ -116,14 +116,14 @@ export function AddToAlbumModal({ item, albums, onClose, onAddToAlbum, onCreateA
                   <button
                     type="button"
                     onClick={() => setIsCreating(false)}
-                    className="flex-1 py-3.5 rounded-xl font-geist font-semibold text-[15px] text-ink-black dark:text-white bg-light dark:bg-[#2C2C2E] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                    className="flex-1 py-3.5 rounded-xl font-sans font-semibold text-base text-ink-black dark:text-white bg-light dark:bg-[#2C2C2E] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={!newTitle.trim()}
-                    className="flex-1 py-3.5 rounded-xl font-geist font-semibold text-[15px] text-white dark:text-ink-black bg-ink-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-3.5 rounded-xl font-sans font-semibold text-base text-white dark:text-ink-black bg-ink-black dark:bg-white hover:bg-black/80 dark:hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Create & Add
                   </button>
@@ -138,7 +138,7 @@ export function AddToAlbumModal({ item, albums, onClose, onAddToAlbum, onCreateA
                   <div className="w-12 h-12 rounded-lg bg-light dark:bg-[#2C2C2E] border border-black/5 dark:border-white/10 flex items-center justify-center group-hover:bg-white dark:group-hover:bg-[#3A3A3C] transition-colors">
                     <Plus className="w-6 h-6 text-ink-black dark:text-white" />
                   </div>
-                  <span className="font-geist font-medium text-[15px] text-ink-black dark:text-white">New Album...</span>
+                  <span className="font-sans font-medium text-base text-ink-black dark:text-white">New Album...</span>
                 </button>
 
                 {albums.length > 0 && (
@@ -162,8 +162,8 @@ export function AddToAlbumModal({ item, albums, onClose, onAddToAlbum, onCreateA
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-geist font-medium text-[15px] text-ink-black dark:text-white truncate">{album.title}</h3>
-                      <p className="font-geist text-[13px] text-gray dark:text-ios-gray-1 truncate">
+                      <h3 className="font-sans font-medium text-base text-ink-black dark:text-white truncate">{album.title}</h3>
+                      <p className="font-sans text-sm text-gray dark:text-ios-gray-1 truncate">
                         {album.tracks.length} {album.tracks.length === 1 ? 'track' : 'tracks'}
                       </p>
                     </div>

@@ -62,7 +62,7 @@ export function MediaScroller({ section, dragControls, onAddClick, onLogEpisode,
           >
             <GripHorizontal className="w-5 h-5" />
           </div>
-          <h2 className="font-instrument text-[18px] font-semibold leading-[140%] text-[var(--label)]">
+          <h2 className="font-serif text-xl font-semibold leading-relaxed text-[var(--label)]">
             {section.title}
           </h2>
         </div>
@@ -75,7 +75,7 @@ export function MediaScroller({ section, dragControls, onAddClick, onLogEpisode,
               <Plus className="w-4 h-4" />
             </button>
           )}
-          <button className="text-[var(--secondary-label)] hover:text-[var(--label)] flex items-center font-geist text-[16px] font-medium leading-[140%] active:opacity-70 transition-colors">
+          <button className="text-[var(--secondary-label)] hover:text-[var(--label)] flex items-center font-sans text-base font-medium leading-relaxed active:opacity-70 transition-colors">
             See All <ChevronRight className="w-4 h-4 ml-0.5" />
           </button>
         </div>

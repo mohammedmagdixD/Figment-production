@@ -38,7 +38,7 @@ export function DiaryView({ entries }: { entries: DiaryEntry[] }) {
               haptics.light();
               setFilter(t as any);
             }}
-            className={`px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap capitalize transition-colors ${filter === t ? 'bg-[var(--label)] text-[var(--system-background)]' : 'bg-[var(--secondary-system-background)] dark:bg-[var(--tertiary-system-background)] text-[var(--secondary-label)] hover:text-[var(--label)]'}`}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap capitalize transition-colors ${filter === t ? 'bg-[var(--label)] text-[var(--system-background)]' : 'bg-[var(--secondary-system-background)] dark:bg-[var(--tertiary-system-background)] text-[var(--secondary-label)] hover:text-[var(--label)]'}`}
           >
             {t}
           </motion.button>
@@ -69,13 +69,13 @@ export function DiaryView({ entries }: { entries: DiaryEntry[] }) {
             className="flex gap-4 items-start pb-4 border-b border-[var(--separator)] group"
           >
             <div className="w-12 shrink-0 pt-1 text-center">
-              <div className="text-[10px] uppercase tracking-wider text-[var(--secondary-label)] font-semibold">
+              <div className="text-xs uppercase tracking-wider text-[var(--secondary-label)] font-semibold">
                 {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}
               </div>
-              <div className="text-xl font-instrument font-semibold text-[var(--label)] leading-none my-0.5">
+              <div className="text-xl font-serif font-semibold text-[var(--label)] leading-none my-0.5">
                 {new Date(entry.date).getUTCDate()}
               </div>
-              <div className="text-[10px] text-[var(--secondary-label)] opacity-70">
+              <div className="text-xs text-[var(--secondary-label)] opacity-70">
                 {new Date(entry.date).getUTCFullYear()}
               </div>
             </div>
@@ -85,10 +85,10 @@ export function DiaryView({ entries }: { entries: DiaryEntry[] }) {
             </div>
 
             <div className="flex-1 min-w-0 pt-1">
-              <h3 className="font-geist font-semibold text-[15px] text-[var(--label)] truncate">
+              <h3 className="font-sans font-semibold text-base text-[var(--label)] truncate">
                 {entry.media.title}
               </h3>
-              <p className="font-geist text-[13px] text-[var(--secondary-label)] truncate mb-1">
+              <p className="font-sans text-sm text-[var(--secondary-label)] truncate mb-1">
                 {entry.media.subtitle}
               </p>
               {entry.rating > 0 && (
@@ -102,7 +102,7 @@ export function DiaryView({ entries }: { entries: DiaryEntry[] }) {
           </motion.div>
         ))}
         {sorted.length === 0 && (
-          <div className="text-center py-12 text-[var(--secondary-label)] text-[14px] font-geist">
+          <div className="text-center py-12 text-[var(--secondary-label)] text-sm font-sans">
             No diary entries found.
           </div>
         )}

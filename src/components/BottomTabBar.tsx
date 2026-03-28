@@ -32,7 +32,7 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
             }`} 
           />
           <span 
-            className={`text-[10px] font-medium transition-colors duration-300 ${
+            className={`text-xs font-medium transition-colors duration-300 ${
               activeTab === 'profile' ? 'text-ios-blue' : 'text-[var(--secondary-label)]'
             }`}
           >
@@ -59,7 +59,7 @@ export function BottomTabBar({ activeTab, onTabChange }: BottomTabBarProps) {
             }`} 
           />
           <span 
-            className={`text-[10px] font-medium transition-colors duration-300 ${
+            className={`text-xs font-medium transition-colors duration-300 ${
               activeTab === 'diary' ? 'text-ios-blue' : 'text-[var(--secondary-label)]'
             }`}
           >
