@@ -394,8 +394,8 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
   try {
     const odesliType = item.type === 'album' ? 'album' : 'song';
     const odesliUrl = isSpotify && item.url
-      ? `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(item.url)}`
-      : `https://api.song.link/v1-alpha.1/links?platform=${platform}&type=${odesliType}&id=${item.id}`;
+      ? `/api/odesli?url=${encodeURIComponent(item.url)}`
+      : `/api/odesli?platform=${platform}&type=${odesliType}&id=${item.id}`;
     console.log('Fetching Odesli:', odesliUrl);
     const res = await fetch(odesliUrl);
     if (res.ok) {

@@ -56,7 +56,7 @@ export interface MovieDetails {
 
 export async function getMovieDetails(id: string): Promise<MovieDetails | null> {
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/movie/${encodeURIComponent(id)}?api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb&append_to_response=credits,release_dates,watch%2Fproviders,videos`);
+    const res = await fetch(`/api/tmdb/movie/${encodeURIComponent(id)}?append_to_response=credits,release_dates,watch%2Fproviders,videos`);
     if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
     const data = await res.json();
 
@@ -312,7 +312,7 @@ export async function getMangaDetails(id: string): Promise<MangaDetails | null> 
 
 export async function getTvDetails(id: string): Promise<MovieDetails | null> {
   try {
-    const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb&append_to_response=credits,content_ratings,watch/providers,videos`);
+    const res = await fetch(`/api/tmdb/tv/${id}?append_to_response=credits,content_ratings,watch/providers,videos`);
     if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
     const data = await res.json();
 
@@ -400,7 +400,7 @@ export async function getPodcastEpisodes(podcastId: string): Promise<PodcastEpis
 
 export async function getBookDetails(id: string): Promise<any | null> {
   try {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes/${id}`);
+    const res = await fetch(`/api/books/volumes/${id}`);
     if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
     return await res.json();
   } catch (e) {
@@ -524,7 +524,7 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
     if (type === 'movie' || type === 'tv') {
       // Using TMDB API for reliable movie/tv search
       const endpoint = type === 'movie' ? 'search/movie' : 'search/tv';
-      const res = await fetch(`https://api.themoviedb.org/3/${endpoint}?api_key=15d2ea6d0dc1d476efbca3eba2b9bbfb&query=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/tmdb/${endpoint}?query=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
       const data = await res.json();
       return (data.results || []).map((item: any) => ({
@@ -539,7 +539,7 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
 
     if (type === 'book' || type === 'webnovel') {
       try {
-        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15`);
+        const res = await fetch(`/api/books/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15`);
         if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
         const data = await res.json();
         return (data.items || []).map((item: any) => {

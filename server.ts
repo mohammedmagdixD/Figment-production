@@ -1,6 +1,7 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
+import { fetchWithCache } from './src/utils/cache';
 
 async function startServer() {
   const app = express();
@@ -55,63 +56,67 @@ async function startServer() {
       const type = (req.query.type as string || 'track').trim(); // Support 'track' or 'show'
       if (!query) return res.json({ results: [] });
 
-      let token = await getSpotifyToken();
-      let response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=15`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-          'User-Agent': 'ShelveApp/1.0'
-        }
-      });
+      const cacheKey = `spotify:search:${type}:${query}`;
+      const TTL = 60 * 60; // 1 hour
 
-      if (response.status === 401) {
-        // Token might be expired or invalid, clear it and retry once
-        spotifyToken = null;
-        token = await getSpotifyToken();
-        response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=15`, {
+      const data = await fetchWithCache(cacheKey, TTL, async () => {
+        let token = await getSpotifyToken();
+        let response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=15`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
             'User-Agent': 'ShelveApp/1.0'
           }
         });
-      }
 
-      if (!response.ok) {
-        const errText = await response.text();
-        if (response.status === 403) {
-          // Gracefully handle 403 Forbidden (often "premium subscription required")
-          // by returning empty results. This allows the frontend to seamlessly fall back to iTunes.
-          return res.json({ results: [] });
+        if (response.status === 401) {
+          // Token might be expired or invalid, clear it and retry once
+          spotifyToken = null;
+          token = await getSpotifyToken();
+          response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=${type}&limit=15`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+              'User-Agent': 'ShelveApp/1.0'
+            }
+          });
         }
-        console.error('Spotify API error response:', errText);
-        throw new Error(`Spotify API error: ${response.status} ${errText}`);
-      }
 
-      const data = await response.json();
-      let results = [];
+        if (!response.ok) {
+          const errText = await response.text();
+          if (response.status === 403) {
+            // Gracefully handle 403 Forbidden
+            return { results: [] };
+          }
+          throw new Error(`Spotify API error: ${response.status} ${errText}`);
+        }
 
-      if (type === 'show' && data.shows) {
-        results = data.shows.items.map((item: any) => ({
-          id: item.id,
-          title: item.name,
-          subtitle: item.publisher,
-          image: item.images[0]?.url || 'https://via.placeholder.com/600',
-          url: item.external_urls.spotify,
-          description: item.description
-        }));
-      } else if (data.tracks) {
-        results = data.tracks.items.map((item: any) => ({
-          id: item.id,
-          title: item.name,
-          subtitle: item.artists.map((a: any) => a.name).join(', '),
-          image: item.album.images[0]?.url || 'https://via.placeholder.com/600',
-          url: item.external_urls.spotify,
-          previewUrl: item.preview_url // Note: Spotify often returns null for preview_url now
-        }));
-      }
+        const data = await response.json();
+        let results = [];
 
-      res.json({ results });
+        if (type === 'show' && data.shows) {
+          results = data.shows.items.map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            subtitle: item.publisher,
+            image: item.images[0]?.url || 'https://via.placeholder.com/600',
+            url: item.external_urls.spotify,
+            description: item.description
+          }));
+        } else if (data.tracks) {
+          results = data.tracks.items.map((item: any) => ({
+            id: item.id,
+            title: item.name,
+            subtitle: item.artists.map((a: any) => a.name).join(', '),
+            image: item.album.images[0]?.url || 'https://via.placeholder.com/600',
+            url: item.external_urls.spotify,
+            previewUrl: item.preview_url
+          }));
+        }
+        return { results };
+      });
+
+      res.json(data);
     } catch (error: any) {
       console.error('Spotify search error:', error);
       res.status(500).json({ error: error.message });
@@ -125,23 +130,134 @@ async function startServer() {
       const queryParams = new URLSearchParams(req.query as any).toString();
       const url = `https://api.myanimelist.net/v2/${endpoint}${queryParams ? `?${queryParams}` : ''}`;
       
-      const clientId = process.env.MAL_CLIENT_ID || '6114d00ca681b7701d1e15fe11a4987e';
-      
-      const response = await fetch(url, {
-        headers: {
-          'X-MAL-CLIENT-ID': clientId
+      const cacheKey = `mal:${endpoint}:${queryParams}`;
+      const TTL = 24 * 60 * 60; // 24 hours
+
+      const data = await fetchWithCache(cacheKey, TTL, async () => {
+        const clientId = process.env.MAL_CLIENT_ID || '6114d00ca681b7701d1e15fe11a4987e';
+        
+        const response = await fetch(url, {
+          headers: {
+            'X-MAL-CLIENT-ID': clientId
+          }
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`MAL API error: ${response.status} ${errText}`);
         }
+
+        return await response.json();
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        return res.status(response.status).json({ error: errText });
-      }
-
-      const data = await response.json();
       res.json(data);
     } catch (error: any) {
       console.error('MAL API error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Odesli API Proxy with Caching
+  app.get('/api/odesli', async (req, res) => {
+    try {
+      const { url, platform, type, id } = req.query;
+      
+      let odesliUrl = 'https://api.song.link/v1-alpha.1/links?userCountry=US&songIfSingle=true';
+      let cacheKey = '';
+
+      if (url) {
+        odesliUrl += `&url=${encodeURIComponent(url as string)}`;
+        cacheKey = `odesli:url:${url}`;
+      } else if (platform && type && id) {
+        odesliUrl += `&platform=${platform}&type=${type}&id=${id}`;
+        cacheKey = `odesli:id:${platform}:${type}:${id}`;
+      } else {
+        return res.status(400).json({ error: 'Missing required parameters: url OR platform, type, and id' });
+      }
+
+      const TTL = 24 * 60 * 60; // 24 hours
+
+      const data = await fetchWithCache(cacheKey, TTL, async () => {
+        const response = await fetch(odesliUrl);
+        
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Odesli API error: ${response.status} ${errText}`);
+        }
+
+        return await response.json();
+      });
+      
+      res.json(data);
+    } catch (error: any) {
+      console.error('Odesli proxy error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // TMDB API Proxy
+  app.get('/api/tmdb/*', async (req, res) => {
+    try {
+      const endpoint = req.params[0];
+      const queryParams = new URLSearchParams(req.query as any);
+      
+      // Remove any client-provided api_key to ensure we use the server's key
+      queryParams.delete('api_key');
+      
+      const tmdbApiKey = process.env.TMDB_API_KEY;
+      if (!tmdbApiKey) {
+        throw new Error('TMDB API key not configured');
+      }
+      
+      queryParams.append('api_key', tmdbApiKey);
+      const queryString = queryParams.toString();
+      const url = `https://api.themoviedb.org/3/${endpoint}?${queryString}`;
+      
+      const cacheKey = `tmdb:${endpoint}:${queryString}`;
+      const TTL = endpoint.startsWith('search/') ? 60 * 60 : 24 * 60 * 60; // 1 hour for search, 24 hours for details
+
+      const data = await fetchWithCache(cacheKey, TTL, async () => {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`TMDB API error: ${response.status} ${errText}`);
+        }
+
+        return await response.json();
+      });
+
+      res.json(data);
+    } catch (error: any) {
+      console.error('TMDB API error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Google Books API Proxy
+  app.get('/api/books/*', async (req, res) => {
+    try {
+      const endpoint = req.params[0];
+      const queryParams = new URLSearchParams(req.query as any).toString();
+      const url = `https://www.googleapis.com/books/v1/${endpoint}${queryParams ? `?${queryParams}` : ''}`;
+      
+      const cacheKey = `books:${endpoint}:${queryParams}`;
+      const TTL = endpoint.startsWith('volumes?q=') ? 60 * 60 : 24 * 60 * 60; // 1 hour for search, 24 hours for details
+
+      const data = await fetchWithCache(cacheKey, TTL, async () => {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Google Books API error: ${response.status} ${errText}`);
+        }
+
+        return await response.json();
+      });
+
+      res.json(data);
+    } catch (error: any) {
+      console.error('Google Books API error:', error);
       res.status(500).json({ error: error.message });
     }
   });
