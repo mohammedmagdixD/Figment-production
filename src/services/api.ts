@@ -143,6 +143,8 @@ export interface AnimeDetails {
     role: string;
     voice_actor: { mal_id: number; name: string; image_url: string } | null;
   }[];
+  related_anime?: any[];
+  recommendations?: any[];
 }
 
 export interface MangaDetails {
@@ -194,7 +196,7 @@ async function getKitsuCoverImage(malId: string, type: 'anime' | 'manga'): Promi
 
 export async function getAnimeDetails(id: string): Promise<AnimeDetails | null> {
   try {
-    const url = `https://api.myanimelist.net/v2/anime/${id}?fields=id,title,main_picture,synopsis,genres,mean,rank,popularity,num_episodes,start_season,studios,alternative_titles,media_type,status,opening_themes,ending_themes,trailer`;
+    const url = `https://api.myanimelist.net/v2/anime/${id}?fields=id,title,main_picture,synopsis,genres,mean,rank,popularity,num_episodes,start_season,studios,alternative_titles,media_type,status,opening_themes,ending_themes,trailer,related_anime,recommendations`;
     
     const [res, kitsuCover] = await Promise.all([
       fetchMAL(url),
@@ -247,7 +249,9 @@ export async function getAnimeDetails(id: string): Promise<AnimeDetails | null> 
       source: '',
       theme_openings: data.opening_themes?.map((t: any) => t.text) || [],
       theme_endings: data.ending_themes?.map((t: any) => t.text) || [],
-      characters: []
+      characters: [],
+      related_anime: data.related_anime || [],
+      recommendations: data.recommendations || []
     };
   } catch (e) {
     console.error('Failed to fetch anime details:', e);
@@ -539,7 +543,7 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
 
     if (type === 'book' || type === 'webnovel') {
       try {
-        const res = await fetch(`/api/books/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15`);
+        const res = await fetch(`/api/books/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15&printType=books&orderBy=relevance`);
         if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
         const data = await res.json();
         return (data.items || []).map((item: any) => {

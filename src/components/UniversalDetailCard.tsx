@@ -183,8 +183,8 @@ export function UniversalDetailCard({ data }: UniversalDetailCardProps) {
                 <AppleMusicIcon className="w-6 h-6" />
               </a>
             )}
-            {streamingLinks.youtubeMusic && (
-              <a href={streamingLinks.youtubeMusic.url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
+            {(streamingLinks.youtubeMusic || streamingLinks.youtube) && (
+              <a href={(streamingLinks.youtubeMusic || streamingLinks.youtube).url} target="_blank" rel="noopener noreferrer" className="text-[var(--secondary-label)] hover:text-[var(--label)] transition-colors">
                 <YouTubeMusicIcon className="w-6 h-6" />
               </a>
             )}

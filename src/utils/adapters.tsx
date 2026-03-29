@@ -66,7 +66,61 @@ function baseMalAdapter(data: any, type: 'anime' | 'manga'): UniversalMediaData 
 }
 
 export function malAnimeAdapter(data: any): UniversalMediaData {
-  return baseMalAdapter(data, 'anime');
+  const baseData = baseMalAdapter(data, 'anime');
+  
+  const relatedLists: Array<{ listTitle: string; items: UniversalMediaData[] }> = [];
+
+  if (data.related_anime && data.related_anime.length > 0) {
+    relatedLists.push({
+      listTitle: 'Related Anime',
+      items: data.related_anime.map((item: any) => ({
+        id: item.node.id.toString(),
+        mediaType: 'anime',
+        images: {
+          backdropUrl: item.node.main_picture?.large || item.node.main_picture?.medium || null,
+          posterUrl: item.node.main_picture?.large || item.node.main_picture?.medium || '',
+          backdropFallback: true
+        },
+        header: {
+          title: item.node.title,
+          subtitle: item.relation_type_formatted || 'Related'
+        },
+        stats: [],
+        metadata: [],
+        description: '',
+        scrollableSections: { genres: [], cast: [], extras: [] }
+      }))
+    });
+  }
+
+  if (data.recommendations && data.recommendations.length > 0) {
+    relatedLists.push({
+      listTitle: 'Recommendations',
+      items: data.recommendations.map((item: any) => ({
+        id: item.node.id.toString(),
+        mediaType: 'anime',
+        images: {
+          backdropUrl: item.node.main_picture?.large || item.node.main_picture?.medium || null,
+          posterUrl: item.node.main_picture?.large || item.node.main_picture?.medium || '',
+          backdropFallback: true
+        },
+        header: {
+          title: item.node.title,
+          subtitle: item.num_recommendations ? `${item.num_recommendations} Recommendations` : 'Recommended'
+        },
+        stats: [],
+        metadata: [],
+        description: '',
+        scrollableSections: { genres: [], cast: [], extras: [] }
+      }))
+    });
+  }
+
+  if (relatedLists.length > 0) {
+    baseData.relatedLists = relatedLists;
+  }
+
+  return baseData;
 }
 
 export function malMangaAdapter(data: any): UniversalMediaData {
@@ -274,12 +328,15 @@ export function googleBooksAdapter(data: any, type: string = 'book'): UniversalM
     stats.push({ label: 'Published', value: info.publishedDate.substring(0, 4) });
   }
 
+  const limitedCategories = info.categories ? info.categories.slice(0, 3) : [];
+  const limitedAuthors = info.authors ? info.authors.slice(0, 2) : [];
+
   const metadata = [];
   if (info.publisher) {
     metadata.push({ label: 'Publisher', value: info.publisher });
   }
-  if (info.categories && info.categories.length > 0) {
-    metadata.push({ label: 'Categories', value: info.categories.join(', ') });
+  if (limitedCategories.length > 0) {
+    metadata.push({ label: 'Categories', value: limitedCategories.join(', ') });
   }
   metadata.push({ label: 'Format', value: type === 'webnovel' ? 'Webnovel' : 'Book' });
 
@@ -293,6 +350,65 @@ export function googleBooksAdapter(data: any, type: string = 'book'): UniversalM
     extras.push({ label: 'Language', value: info.language.toUpperCase() });
   }
 
+  let actionButton;
+  if (info.previewLink || access.webReaderLink) {
+    actionButton = {
+      type: 'read' as const,
+      payload: info.previewLink || access.webReaderLink,
+      label: 'Read Sample'
+    };
+  }
+
+  const fetchRelatedLists = async () => {
+    const relatedLists: { listTitle: string; items: UniversalMediaData[] }[] = [];
+    
+    try {
+      if (info.authors && info.authors.length > 0) {
+        const author = info.authors[0];
+        const authorRes = await fetch(`/api/books/volumes?q=inauthor:"${encodeURIComponent(author)}"&printType=books&maxResults=10`);
+        const authorData = await authorRes.json();
+        if (authorData.items) {
+          const items = authorData.items
+            .filter((item: any) => item.id !== data.id)
+            .map((item: any) => {
+              const mapped = googleBooksAdapter(item, 'book');
+              delete mapped.fetchRelatedLists; // Prevent deep fetches
+              return mapped;
+            });
+          if (items.length > 0) {
+            relatedLists.push({ listTitle: `More by ${author}`, items });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch related author books', e);
+    }
+
+    try {
+      if (info.categories && info.categories.length > 0) {
+        const category = info.categories[0];
+        const categoryRes = await fetch(`/api/books/volumes?q=subject:"${encodeURIComponent(category)}"&printType=books&maxResults=10`);
+        const categoryData = await categoryRes.json();
+        if (categoryData.items) {
+          const items = categoryData.items
+            .filter((item: any) => item.id !== data.id)
+            .map((item: any) => {
+              const mapped = googleBooksAdapter(item, 'book');
+              delete mapped.fetchRelatedLists; // Prevent deep fetches
+              return mapped;
+            });
+          if (items.length > 0) {
+            relatedLists.push({ listTitle: 'Similar Books', items });
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch similar books', e);
+    }
+
+    return relatedLists;
+  };
+
   return {
     id: data.id.toString(),
     mediaType: type as any,
@@ -303,20 +419,17 @@ export function googleBooksAdapter(data: any, type: string = 'book'): UniversalM
     },
     header: {
       title: info.title || 'Unknown Title',
-      subtitle: info.authors ? info.authors.join(', ') : 'Unknown Author'
+      subtitle: limitedAuthors.length > 0 ? limitedAuthors.join(', ') : 'Unknown Author'
     },
     stats,
     metadata,
     description: cleanDescription,
-    actionButton: access.webReaderLink ? {
-      type: 'read',
-      payload: access.webReaderLink,
-      label: 'Read Sample'
-    } : undefined,
+    actionButton,
     scrollableSections: {
-      genres: info.categories || [],
+      genres: limitedCategories,
       extras
-    }
+    },
+    fetchRelatedLists
   };
 }
 
@@ -408,6 +521,11 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
         // Extract YouTube video ID from Odesli links
         const ytEntity = streamingLinks.youtube || streamingLinks.youtubeMusic;
         if (ytEntity && ytEntity.entityUniqueId) {
+          const entityData = data.entitiesByUniqueId?.[ytEntity.entityUniqueId];
+          if (entityData && entityData.thumbnailUrl) {
+            backdropUrl = entityData.thumbnailUrl;
+          }
+          
           const parts = ytEntity.entityUniqueId.split('::');
           if (parts.length > 1 && parts[1].length === 11) {
             videoId = parts[1];
@@ -433,7 +551,9 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
   }
 
   if (videoId) {
-    backdropUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    if (!backdropUrl) {
+      backdropUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    }
     actionButton = {
       type: 'trailer',
       payload: `https://www.youtube.com/watch?v=${videoId}`
