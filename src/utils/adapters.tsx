@@ -406,11 +406,22 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
         console.log('Streaming links set:', streamingLinks);
         
         // Extract YouTube video ID from Odesli links
-        const ytLink = streamingLinks.youtube?.url || streamingLinks.youtubeMusic?.url;
-        if (ytLink) {
-          const match = ytLink.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com%2Fwatch%3Fv%3D|youtu\.be%2F)([a-zA-Z0-9_-]{11})/);
-          if (match && match[1]) {
-            videoId = match[1];
+        const ytEntity = streamingLinks.youtube || streamingLinks.youtubeMusic;
+        if (ytEntity && ytEntity.entityUniqueId) {
+          const parts = ytEntity.entityUniqueId.split('::');
+          if (parts.length > 1 && parts[1].length === 11) {
+            videoId = parts[1];
+          }
+        }
+        
+        // Fallback to URL regex if entityUniqueId is missing or didn't work
+        if (!videoId) {
+          const ytLink = streamingLinks.youtube?.url || streamingLinks.youtubeMusic?.url;
+          if (ytLink) {
+            const match = ytLink.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/i);
+            if (match && match[1]) {
+              videoId = match[1];
+            }
           }
         }
       }

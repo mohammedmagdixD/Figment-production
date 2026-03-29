@@ -116,6 +116,7 @@ async function startServer() {
         return { results };
       });
 
+      res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
       console.error('Spotify search error:', error);
@@ -150,6 +151,7 @@ async function startServer() {
         return await response.json();
       });
 
+      res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
       console.error('MAL API error:', error);
@@ -162,7 +164,7 @@ async function startServer() {
     try {
       const { url, platform, type, id } = req.query;
       
-      let odesliUrl = 'https://api.song.link/v1-alpha.1/links?userCountry=US&songIfSingle=true';
+      let odesliUrl = 'https://api.song.link/v1-alpha.1/links?songIfSingle=true';
       let cacheKey = '';
 
       if (url) {
@@ -188,6 +190,7 @@ async function startServer() {
         return await response.json();
       });
       
+      res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
       console.error('Odesli proxy error:', error);
@@ -227,6 +230,7 @@ async function startServer() {
         return await response.json();
       });
 
+      res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
       console.error('TMDB API error:', error);
@@ -255,6 +259,7 @@ async function startServer() {
         return await response.json();
       });
 
+      res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
       console.error('Google Books API error:', error);
