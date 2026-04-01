@@ -5,6 +5,7 @@ import { UniversalListItem } from '../components/UniversalListItem';
 import { motion } from 'motion/react';
 import { haptics } from '../utils/haptics';
 import { Search } from 'lucide-react';
+import { fetchWithBackoff, getHighResBookCover } from '../services/api';
 
 function baseMalAdapter(data: any, type: 'anime' | 'manga'): UniversalMediaData {
   const isAnime = type === 'anime';
@@ -304,14 +305,7 @@ export function googleBooksAdapter(data: any, type: string = 'book'): UniversalM
   const access = data.accessInfo || {};
   
   // Image handling
-  let imageUrl = info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail || 'https://via.placeholder.com/300x400?text=No+Cover';
-  imageUrl = imageUrl.replace('http:', 'https:');
-  // Try to get a higher resolution image by removing zoom or setting it to 3
-  if (imageUrl.includes('&zoom=')) {
-    imageUrl = imageUrl.replace(/&zoom=\d+/, '&zoom=3');
-  } else if (imageUrl.includes('?id=')) {
-    imageUrl += '&zoom=3';
-  }
+  const imageUrl = getHighResBookCover(info.imageLinks?.thumbnail || info.imageLinks?.smallThumbnail);
 
   // Description handling: strip HTML tags
   const rawDescription = info.description || '';
@@ -365,19 +359,62 @@ export function googleBooksAdapter(data: any, type: string = 'book'): UniversalM
     try {
       if (info.authors && info.authors.length > 0) {
         const author = info.authors[0];
-        const authorRes = await fetch(`/api/books/volumes?q=inauthor:"${encodeURIComponent(author)}"&printType=books&maxResults=10`);
-        const authorData = await authorRes.json();
-        if (authorData.items) {
-          const items = authorData.items
-            .filter((item: any) => item.id !== data.id)
-            .map((item: any) => {
-              const mapped = googleBooksAdapter(item, 'book');
-              delete mapped.fetchRelatedLists; // Prevent deep fetches
-              return mapped;
+        let items: UniversalMediaData[] = [];
+        try {
+          const authorRes = await fetchWithBackoff(`/api/books/volumes?q=inauthor:"${encodeURIComponent(author)}"&printType=books&maxResults=30`, undefined, 0);
+          if (!authorRes.ok) throw new Error('Google Books API failed');
+          const authorData = await authorRes.json();
+          if (authorData.items) {
+            let authorItems = authorData.items.filter((item: any) => item.id !== data.id);
+            
+            // Sort to push items without covers or descriptions to the bottom
+            authorItems.sort((a: any, b: any) => {
+              const aHasCover = !!a.volumeInfo.imageLinks?.thumbnail;
+              const bHasCover = !!b.volumeInfo.imageLinks?.thumbnail;
+              if (aHasCover && !bHasCover) return -1;
+              if (!aHasCover && bHasCover) return 1;
+              
+              const aHasDesc = !!a.volumeInfo.description;
+              const bHasDesc = !!b.volumeInfo.description;
+              if (aHasDesc && !bHasDesc) return -1;
+              if (!aHasDesc && bHasDesc) return 1;
+
+              return 0;
             });
-          if (items.length > 0) {
-            relatedLists.push({ listTitle: `More by ${author}`, items });
+
+            items = authorItems
+              .slice(0, 10)
+              .map((item: any) => {
+                const mapped = googleBooksAdapter(item, 'book');
+                delete mapped.fetchRelatedLists;
+                return mapped;
+              });
           }
+        } catch (e) {
+          console.warn('Falling back to OpenLibrary for related author books');
+          const olRes = await fetchWithBackoff(`https://openlibrary.org/search.json?author=${encodeURIComponent(author)}&limit=10`);
+          if (olRes.ok) {
+            const olData = await olRes.json();
+            items = (olData.docs || [])
+              .filter((item: any) => item.key.replace('/works/', '') !== data.id)
+              .map((item: any) => {
+                const mapped = googleBooksAdapter({
+                  id: item.key.replace('/works/', ''),
+                  volumeInfo: {
+                    title: item.title,
+                    authors: item.author_name,
+                    imageLinks: {
+                      thumbnail: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : null
+                    }
+                  }
+                }, 'book');
+                delete mapped.fetchRelatedLists;
+                return mapped;
+              });
+          }
+        }
+        if (items.length > 0) {
+          relatedLists.push({ listTitle: `More by ${author}`, items });
         }
       }
     } catch (e) {
@@ -387,19 +424,62 @@ export function googleBooksAdapter(data: any, type: string = 'book'): UniversalM
     try {
       if (info.categories && info.categories.length > 0) {
         const category = info.categories[0];
-        const categoryRes = await fetch(`/api/books/volumes?q=subject:"${encodeURIComponent(category)}"&printType=books&maxResults=10`);
-        const categoryData = await categoryRes.json();
-        if (categoryData.items) {
-          const items = categoryData.items
-            .filter((item: any) => item.id !== data.id)
-            .map((item: any) => {
-              const mapped = googleBooksAdapter(item, 'book');
-              delete mapped.fetchRelatedLists; // Prevent deep fetches
-              return mapped;
+        let items: UniversalMediaData[] = [];
+        try {
+          const categoryRes = await fetchWithBackoff(`/api/books/volumes?q=subject:"${encodeURIComponent(category)}"&printType=books&maxResults=30`, undefined, 0);
+          if (!categoryRes.ok) throw new Error('Google Books API failed');
+          const categoryData = await categoryRes.json();
+          if (categoryData.items) {
+            let categoryItems = categoryData.items.filter((item: any) => item.id !== data.id);
+            
+            // Sort to push items without covers or descriptions to the bottom
+            categoryItems.sort((a: any, b: any) => {
+              const aHasCover = !!a.volumeInfo.imageLinks?.thumbnail;
+              const bHasCover = !!b.volumeInfo.imageLinks?.thumbnail;
+              if (aHasCover && !bHasCover) return -1;
+              if (!aHasCover && bHasCover) return 1;
+              
+              const aHasDesc = !!a.volumeInfo.description;
+              const bHasDesc = !!b.volumeInfo.description;
+              if (aHasDesc && !bHasDesc) return -1;
+              if (!aHasDesc && bHasDesc) return 1;
+
+              return 0;
             });
-          if (items.length > 0) {
-            relatedLists.push({ listTitle: 'Similar Books', items });
+
+            items = categoryItems
+              .slice(0, 10)
+              .map((item: any) => {
+                const mapped = googleBooksAdapter(item, 'book');
+                delete mapped.fetchRelatedLists;
+                return mapped;
+              });
           }
+        } catch (e) {
+          console.warn('Falling back to OpenLibrary for similar books');
+          const olRes = await fetchWithBackoff(`https://openlibrary.org/search.json?subject=${encodeURIComponent(category)}&limit=10`);
+          if (olRes.ok) {
+            const olData = await olRes.json();
+            items = (olData.docs || [])
+              .filter((item: any) => item.key.replace('/works/', '') !== data.id)
+              .map((item: any) => {
+                const mapped = googleBooksAdapter({
+                  id: item.key.replace('/works/', ''),
+                  volumeInfo: {
+                    title: item.title,
+                    authors: item.author_name,
+                    imageLinks: {
+                      thumbnail: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : null
+                    }
+                  }
+                }, 'book');
+                delete mapped.fetchRelatedLists;
+                return mapped;
+              });
+          }
+        }
+        if (items.length > 0) {
+          relatedLists.push({ listTitle: 'Similar Books', items });
         }
       }
     } catch (e) {
@@ -510,7 +590,7 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
       ? `/api/odesli?url=${encodeURIComponent(item.url)}`
       : `/api/odesli?platform=${platform}&type=${odesliType}&id=${item.id}`;
     console.log('Fetching Odesli:', odesliUrl);
-    const res = await fetch(odesliUrl);
+    const res = await fetchWithBackoff(odesliUrl);
     if (res.ok) {
       const data = await res.json();
       console.log('Odesli data:', data);
@@ -563,7 +643,7 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
   // Step 2: TheAudioDB (Fallback 1)
   if (!backdropUrl) {
     try {
-      const adbRes = await fetch(`https://www.theaudiodb.com/api/v1/json/2/search.php?s=${encodeURIComponent(artistName)}`);
+      const adbRes = await fetchWithBackoff(`https://www.theaudiodb.com/api/v1/json/2/search.php?s=${encodeURIComponent(artistName)}`);
       if (adbRes.ok) {
         const adbData = await adbRes.json();
         if (adbData.artists && adbData.artists.length > 0 && adbData.artists[0].strArtistFanart) {
@@ -584,7 +664,7 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
 
   let trackDetails: any = null;
   try {
-    const itunesRes = await fetch(`https://itunes.apple.com/lookup?id=${item.id}`);
+    const itunesRes = await fetchWithBackoff(`https://itunes.apple.com/lookup?id=${item.id}`);
     if (itunesRes.ok) {
       const itunesData = await itunesRes.json();
       if (itunesData.results && itunesData.results.length > 0) {
@@ -603,7 +683,7 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
     
     if (trackDetails?.collectionId) {
       try {
-        const albumRes = await fetch(`https://itunes.apple.com/lookup?id=${trackDetails.collectionId}&entity=song`);
+        const albumRes = await fetchWithBackoff(`https://itunes.apple.com/lookup?id=${trackDetails.collectionId}&entity=song`);
         if (albumRes.ok) {
           const albumData = await albumRes.json();
           const albumTracks = albumData.results.filter((res: any) => res.wrapperType === 'track' && res.trackId !== trackDetails.trackId);
@@ -622,7 +702,7 @@ export async function itunesAudioAdapter(item: any): Promise<UniversalMediaData>
 
     if (trackDetails?.artistId) {
       try {
-        const artistRes = await fetch(`https://itunes.apple.com/lookup?id=${trackDetails.artistId}&entity=song&limit=11`);
+        const artistRes = await fetchWithBackoff(`https://itunes.apple.com/lookup?id=${trackDetails.artistId}&entity=song&limit=11`);
         if (artistRes.ok) {
           const artistData = await artistRes.json();
           const artistTracks = artistData.results.filter((res: any) => res.wrapperType === 'track' && res.trackId !== trackDetails.trackId).slice(0, 10);

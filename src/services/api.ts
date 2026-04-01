@@ -18,6 +18,51 @@ export interface SearchResult {
   description?: string; // For details modal
 }
 
+export async function fetchWithBackoff(url: string, options?: RequestInit, maxRetries = 3, initialDelay = 1000): Promise<Response> {
+  let retries = 0;
+  let delay = initialDelay;
+
+  while (true) {
+    try {
+      const response = await fetch(url, options);
+      
+      if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+        if (retries >= maxRetries) {
+          return response;
+        }
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        retries++;
+        continue;
+      }
+      
+      return response;
+    } catch (error) {
+      if (retries >= maxRetries) {
+        throw error;
+      }
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+      retries++;
+    }
+  }
+}
+
+export function getHighResBookCover(url?: string): string {
+  if (!url) return 'https://placehold.co/300x400/1a1a1a/ffffff?text=No+Cover';
+  
+  let highResUrl = url.replace('http:', 'https:');
+  highResUrl = highResUrl.replace(/&edge=curl/g, '');
+  
+  if (highResUrl.includes('&zoom=')) {
+    highResUrl = highResUrl.replace(/&zoom=\d+/, '&zoom=3');
+  } else if (highResUrl.includes('?id=')) {
+    highResUrl += '&zoom=3';
+  }
+  
+  return highResUrl;
+}
+
 export interface PodcastEpisode {
   id: string;
   title: string;
@@ -56,7 +101,7 @@ export interface MovieDetails {
 
 export async function getMovieDetails(id: string): Promise<MovieDetails | null> {
   try {
-    const res = await fetch(`/api/tmdb/movie/${encodeURIComponent(id)}?append_to_response=credits,release_dates,watch%2Fproviders,videos`);
+    const res = await fetchWithBackoff(`/api/tmdb/movie/${encodeURIComponent(id)}?append_to_response=credits,release_dates,watch%2Fproviders,videos`);
     if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
     const data = await res.json();
 
@@ -176,12 +221,12 @@ export interface MangaDetails {
 
 async function fetchMAL(url: string): Promise<Response> {
   const proxyUrl = url.replace('https://api.myanimelist.net/v2/', '/api/mal/');
-  return fetch(proxyUrl);
+  return fetchWithBackoff(proxyUrl);
 }
 
 async function getKitsuCoverImage(malId: string, type: 'anime' | 'manga'): Promise<string | null> {
   try {
-    const res = await fetch(`https://kitsu.app/api/edge/mappings?filter[externalSite]=myanimelist/${type}&filter[externalId]=${malId}&include=item`);
+    const res = await fetchWithBackoff(`https://kitsu.app/api/edge/mappings?filter[externalSite]=myanimelist/${type}&filter[externalId]=${malId}&include=item`);
     if (!res.ok) return null;
     const data = await res.json();
     if (data.included && data.included.length > 0) {
@@ -316,7 +361,7 @@ export async function getMangaDetails(id: string): Promise<MangaDetails | null> 
 
 export async function getTvDetails(id: string): Promise<MovieDetails | null> {
   try {
-    const res = await fetch(`/api/tmdb/tv/${id}?append_to_response=credits,content_ratings,watch/providers,videos`);
+    const res = await fetchWithBackoff(`/api/tmdb/tv/${id}?append_to_response=credits,content_ratings,watch/providers,videos`);
     if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
     const data = await res.json();
 
@@ -384,7 +429,7 @@ export async function getTvDetails(id: string): Promise<MovieDetails | null> {
 
 export async function getPodcastEpisodes(podcastId: string): Promise<PodcastEpisode[]> {
   try {
-    const res = await fetch(`https://itunes.apple.com/lookup?id=${podcastId}&media=podcast&entity=podcastEpisode&limit=50`);
+    const res = await fetchWithBackoff(`https://itunes.apple.com/lookup?id=${podcastId}&media=podcast&entity=podcastEpisode&limit=50`);
     if (!res.ok) throw new Error(`iTunes API error: ${res.status}`);
     const data = await res.json();
     // The first result is the podcast itself, the rest are episodes
@@ -403,21 +448,25 @@ export async function getPodcastEpisodes(podcastId: string): Promise<PodcastEpis
 }
 
 export async function getBookDetails(id: string): Promise<any | null> {
-  try {
-    const res = await fetch(`/api/books/volumes/${id}`);
-    if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
-    return await res.json();
-  } catch (e) {
-    console.warn('Google Books API failed, trying OpenLibrary fallback', e);
+  if (!id.startsWith('OL')) {
     try {
-      const res = await fetch(`https://openlibrary.org/works/${id}.json`);
+      const res = await fetchWithBackoff(`/api/books/volumes/${id}`, undefined, 0);
+      if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('Google Books API failed, trying OpenLibrary fallback', e);
+    }
+  }
+
+  try {
+    const res = await fetchWithBackoff(`https://openlibrary.org/works/${id}.json`);
       if (!res.ok) throw new Error(`OpenLibrary API error: ${res.status}`);
       const data = await res.json();
       
       let authorNames = ['Unknown Author'];
       if (data.authors && data.authors.length > 0) {
         try {
-          const authorRes = await fetch(`https://openlibrary.org${data.authors[0].author.key}.json`);
+          const authorRes = await fetchWithBackoff(`https://openlibrary.org${data.authors[0].author.key}.json`);
           if (authorRes.ok) {
             const authorData = await authorRes.json();
             authorNames = [authorData.name];
@@ -437,14 +486,14 @@ export async function getBookDetails(id: string): Promise<any | null> {
             thumbnail: data.covers && data.covers.length > 0 ? `https://covers.openlibrary.org/b/id/${data.covers[0]}-L.jpg` : null
           },
           publishedDate: data.first_publish_date,
-          categories: data.subjects
+          categories: data.subjects,
+          previewLink: `https://openlibrary.org/works/${id}`
         }
       };
     } catch (olErr) {
       console.error('Failed to fetch book details from OpenLibrary:', olErr);
       return null;
     }
-  }
 }
 
 export async function searchMedia(query: string, type: MediaType): Promise<SearchResult[]> {
@@ -455,14 +504,14 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
       let results: SearchResult[] = [];
       // Try iTunes first
       try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=podcast&entity=podcast&limit=15`);
+        const res = await fetchWithBackoff(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=podcast&entity=podcast&limit=15`);
         if (!res.ok) throw new Error(`iTunes API error: ${res.status}`);
         const data = await res.json();
         results = (data.results || []).map((item: any) => ({
           id: item.collectionId?.toString(),
           title: item.collectionName,
           subtitle: item.artistName,
-          image: item.artworkUrl600 || item.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://via.placeholder.com/600',
+          image: item.artworkUrl600 || item.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://placehold.co/600x600/1a1a1a/ffffff?text=No+Cover',
           url: item.collectionViewUrl,
           description: item.collectionName
         }));
@@ -473,7 +522,7 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
       // Fallback to Spotify if no results
       if (results.length === 0) {
         try {
-          const res = await fetch(`/api/search/spotify?q=${encodeURIComponent(query)}&type=show`);
+          const res = await fetchWithBackoff(`/api/search/spotify?q=${encodeURIComponent(query)}&type=show`);
           if (!res.ok) throw new Error(`Spotify API error: ${res.status}`);
           const data = await res.json();
           results = data.results || [];
@@ -495,7 +544,7 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
     if (type === 'music') {
       // Try Spotify first
       try {
-        const res = await fetch(`/api/search/spotify?q=${encodeURIComponent(query)}`);
+        const res = await fetchWithBackoff(`/api/search/spotify?q=${encodeURIComponent(query)}`);
         if (!res.ok) throw new Error(`Spotify API error: ${res.status}`);
         const data = await res.json();
         if (data.results && data.results.length > 0) {
@@ -507,14 +556,14 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
 
       // Fallback to iTunes
       try {
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
+        const res = await fetchWithBackoff(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`);
         if (!res.ok) throw new Error(`iTunes API error: ${res.status}`);
         const data = await res.json();
         return (data.results || []).map((item: any) => ({
           id: item.trackId.toString(),
           title: item.trackName,
           subtitle: item.artistName,
-          image: item.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://via.placeholder.com/600',
+          image: item.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://placehold.co/600x600/1a1a1a/ffffff?text=No+Cover',
           url: item.trackViewUrl,
           previewUrl: item.previewUrl,
           description: item.collectionName
@@ -528,14 +577,14 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
     if (type === 'movie' || type === 'tv') {
       // Using TMDB API for reliable movie/tv search
       const endpoint = type === 'movie' ? 'search/movie' : 'search/tv';
-      const res = await fetch(`/api/tmdb/${endpoint}?query=${encodeURIComponent(query)}`);
+      const res = await fetchWithBackoff(`/api/tmdb/${endpoint}?query=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error(`TMDB API error: ${res.status}`);
       const data = await res.json();
       return (data.results || []).map((item: any) => ({
         id: item.id.toString(),
         title: item.title || item.name,
         subtitle: (item.release_date || item.first_air_date) ? (item.release_date || item.first_air_date).split('-')[0] : (type === 'movie' ? 'Movie' : 'TV Show'),
-        image: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://via.placeholder.com/600',
+        image: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'https://placehold.co/600x600/1a1a1a/ffffff?text=No+Cover',
         url: `https://www.themoviedb.org/${type}/${item.id}`,
         description: item.overview
       }));
@@ -543,16 +592,63 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
 
     if (type === 'book' || type === 'webnovel') {
       try {
-        const res = await fetch(`/api/books/volumes?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&maxResults=15&printType=books&orderBy=relevance`);
+        const excludeTerms = '-summary -study -analysis -review -notes -guide';
+        let finalQuery = query;
+        if (type === 'webnovel') {
+          finalQuery += ' webnovel';
+        } else if (type === 'book') {
+          finalQuery += ` ${excludeTerms}`;
+        }
+        const res = await fetchWithBackoff(`/api/books/volumes?q=${encodeURIComponent(finalQuery)}&printType=books&orderBy=relevance&maxResults=40`, undefined, 0);
         if (!res.ok) throw new Error(`Google Books API error: ${res.status}`);
         const data = await res.json();
-        return (data.items || []).map((item: any) => {
+        
+        let items = data.items || [];
+        
+        if (type === 'book') {
+          // Google Books API often ignores the minus operator, so we filter spam/summary books locally
+          const badKeywords = ['summary of', 'study guide', 'analysis of', 'review of', 'notes on', 'workbook for', 'instaread', 'chapter by chapter', 'summary & analysis'];
+          const queryLower = query.toLowerCase();
+          const queryHasBadWord = badKeywords.some(kw => queryLower.includes(kw));
+          
+          if (!queryHasBadWord) {
+            items = items.filter((item: any) => {
+              const title = (item.volumeInfo.title || '').toLowerCase();
+              const subtitle = (item.volumeInfo.subtitle || '').toLowerCase();
+              return !badKeywords.some(kw => title.includes(kw) || subtitle.includes(kw));
+            });
+          }
+        }
+
+        // Sort to push items without covers, authors, or descriptions to the bottom, preserving relative relevance otherwise
+        items.sort((a: any, b: any) => {
+          const aHasCover = !!a.volumeInfo.imageLinks?.thumbnail;
+          const bHasCover = !!b.volumeInfo.imageLinks?.thumbnail;
+          if (aHasCover && !bHasCover) return -1;
+          if (!aHasCover && bHasCover) return 1;
+          
+          const aHasAuthor = !!(a.volumeInfo.authors && a.volumeInfo.authors.length > 0);
+          const bHasAuthor = !!(b.volumeInfo.authors && b.volumeInfo.authors.length > 0);
+          if (aHasAuthor && !bHasAuthor) return -1;
+          if (!aHasAuthor && bHasAuthor) return 1;
+          
+          const aHasDesc = !!a.volumeInfo.description;
+          const bHasDesc = !!b.volumeInfo.description;
+          if (aHasDesc && !bHasDesc) return -1;
+          if (!aHasDesc && bHasDesc) return 1;
+
+          return 0;
+        });
+
+        items = items.slice(0, 15);
+
+        return items.map((item: any) => {
           const info = item.volumeInfo;
           return {
             id: item.id,
             title: info.title,
             subtitle: info.authors ? info.authors.join(', ') : 'Unknown Author',
-            image: info.imageLinks?.thumbnail?.replace('http:', 'https:') || 'https://via.placeholder.com/300x400?text=No+Cover',
+            image: getHighResBookCover(info.imageLinks?.thumbnail),
             url: info.infoLink,
             description: info.description
           };
@@ -560,14 +656,14 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
       } catch (e) {
         console.warn('Google Books API failed, falling back to OpenLibrary', e);
         try {
-          const res = await fetch(`https://openlibrary.org/search.json?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&limit=15`);
+          const res = await fetchWithBackoff(`https://openlibrary.org/search.json?q=${encodeURIComponent(query + (type === 'webnovel' ? ' webnovel' : ''))}&limit=15`);
           if (!res.ok) throw new Error(`OpenLibrary API error: ${res.status}`);
           const data = await res.json();
           return (data.docs || []).map((item: any) => ({
             id: item.key.replace('/works/', ''),
             title: item.title,
             subtitle: item.author_name ? item.author_name.join(', ') : 'Unknown Author',
-            image: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : 'https://via.placeholder.com/300x400?text=No+Cover',
+            image: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-M.jpg` : 'https://placehold.co/300x400/1a1a1a/ffffff?text=No+Cover',
             url: `https://openlibrary.org${item.key}`,
             description: item.first_sentence ? (typeof item.first_sentence === 'string' ? item.first_sentence : item.first_sentence[0]) : ''
           }));
@@ -588,7 +684,7 @@ export async function searchMedia(query: string, type: MediaType): Promise<Searc
         id: item.node.id.toString(),
         title: item.node.title,
         subtitle: item.node.start_season ? item.node.start_season.year.toString() : item.node.media_type,
-        image: item.node.main_picture?.large || item.node.main_picture?.medium || 'https://via.placeholder.com/300x400?text=No+Cover',
+        image: item.node.main_picture?.large || item.node.main_picture?.medium || 'https://placehold.co/300x400/1a1a1a/ffffff?text=No+Cover',
         url: `https://myanimelist.net/${type}/${item.node.id}`,
         description: item.node.synopsis || ''
       }));

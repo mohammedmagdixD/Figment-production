@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fetchWithCache } from './src/utils/cache';
@@ -6,6 +7,8 @@ import { fetchWithCache } from './src/utils/cache';
 async function startServer() {
   const app = express();
   const PORT = 3000;
+
+  app.use(cors());
 
   // Spotify Auth Token Cache
   let spotifyToken: string | null = null;
@@ -23,30 +26,35 @@ async function startServer() {
       return spotifyToken;
     }
 
-    const response = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
-        'User-Agent': 'ShelveApp/1.0'
-      },
-      body: 'grant_type=client_credentials'
-    });
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + Buffer.from(clientId + ':' + clientSecret).toString('base64'),
+          'User-Agent': 'ShelveApp/1.0'
+        },
+        body: 'grant_type=client_credentials'
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error('Failed to get Spotify token:', errText);
-      throw new Error(`Failed to get Spotify token: ${response.status} ${errText}`);
-    }
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error('Failed to get Spotify token:', errText);
+        throw new Error(`Failed to get Spotify token: ${response.status} ${errText}`);
+      }
 
-    const data = await response.json();
-    if (!data.access_token) {
-      console.error('Spotify token response missing access_token:', data);
-      throw new Error('Spotify token response missing access_token');
+      const data = await response.json();
+      if (!data.access_token) {
+        console.error('Spotify token response missing access_token:', data);
+        throw new Error('Spotify token response missing access_token');
+      }
+      spotifyToken = data.access_token;
+      spotifyTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000; // Expire 1 min early
+      return spotifyToken;
+    } catch (error) {
+      console.error('Error during Spotify token handshake:', error);
+      throw error;
     }
-    spotifyToken = data.access_token;
-    spotifyTokenExpiresAt = Date.now() + (data.expires_in - 60) * 1000; // Expire 1 min early
-    return spotifyToken;
   }
 
   // API Routes
@@ -88,7 +96,9 @@ async function startServer() {
             // Gracefully handle 403 Forbidden
             return { results: [] };
           }
-          throw new Error(`Spotify API error: ${response.status} ${errText}`);
+          const err: any = new Error(`Spotify API error: ${response.status} ${errText}`);
+          err.status = response.status;
+          throw err;
         }
 
         const data = await response.json();
@@ -119,8 +129,10 @@ async function startServer() {
       res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
-      console.error('Spotify search error:', error);
-      res.status(500).json({ error: error.message });
+      if (error.status !== 429) {
+        console.error('Spotify search error:', error.message || error);
+      }
+      res.status(error.status || 500).json({ error: error.message });
     }
   });
 
@@ -145,7 +157,9 @@ async function startServer() {
 
         if (!response.ok) {
           const errText = await response.text();
-          throw new Error(`MAL API error: ${response.status} ${errText}`);
+          const err: any = new Error(`MAL API error: ${response.status} ${errText}`);
+          err.status = response.status;
+          throw err;
         }
 
         return await response.json();
@@ -154,8 +168,10 @@ async function startServer() {
       res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
-      console.error('MAL API error:', error);
-      res.status(500).json({ error: error.message });
+      if (error.status !== 429) {
+        console.error('MAL API error:', error.message || error);
+      }
+      res.status(error.status || 500).json({ error: error.message });
     }
   });
 
@@ -184,7 +200,9 @@ async function startServer() {
         
         if (!response.ok) {
           const errText = await response.text();
-          throw new Error(`Odesli API error: ${response.status} ${errText}`);
+          const err: any = new Error(`Odesli API error: ${response.status} ${errText}`);
+          err.status = response.status;
+          throw err;
         }
 
         return await response.json();
@@ -193,8 +211,10 @@ async function startServer() {
       res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
-      console.error('Odesli proxy error:', error);
-      res.status(500).json({ error: error.message });
+      if (error.status !== 429) {
+        console.error('Odesli proxy error:', error.message || error);
+      }
+      res.status(error.status || 500).json({ error: error.message });
     }
   });
 
@@ -220,11 +240,16 @@ async function startServer() {
       const TTL = endpoint.startsWith('search/') ? 60 * 60 : 24 * 60 * 60; // 1 hour for search, 24 hours for details
 
       const data = await fetchWithCache(cacheKey, TTL, async () => {
-        const response = await fetch(url);
+        const headers: Record<string, string> = {};
+        headers.referer = req.headers.referer || req.headers.origin || `https://${req.get('host')}/`;
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           const errText = await response.text();
-          throw new Error(`TMDB API error: ${response.status} ${errText}`);
+          const err: any = new Error(`TMDB API error: ${response.status} ${errText}`);
+          err.status = response.status;
+          throw err;
         }
 
         return await response.json();
@@ -233,8 +258,10 @@ async function startServer() {
       res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
-      console.error('TMDB API error:', error);
-      res.status(500).json({ error: error.message });
+      if (error.status !== 429) {
+        console.error('TMDB API error:', error.message || error);
+      }
+      res.status(error.status || 500).json({ error: error.message });
     }
   });
 
@@ -242,18 +269,33 @@ async function startServer() {
   app.get('/api/books/*', async (req, res) => {
     try {
       const endpoint = req.params[0];
-      const queryParams = new URLSearchParams(req.query as any).toString();
-      const url = `https://www.googleapis.com/books/v1/${endpoint}${queryParams ? `?${queryParams}` : ''}`;
+      const queryParams = new URLSearchParams(req.query as any);
       
-      const cacheKey = `books:${endpoint}:${queryParams}`;
-      const TTL = endpoint.startsWith('volumes?q=') ? 60 * 60 : 24 * 60 * 60; // 1 hour for search, 24 hours for details
+      // Remove any client-provided key to ensure we use the server's key
+      queryParams.delete('key');
+      
+      const googleBooksApiKey = process.env.GOOGLE_BOOKS_API_KEY;
+      if (googleBooksApiKey) {
+        queryParams.append('key', googleBooksApiKey);
+      }
+      
+      const queryString = queryParams.toString();
+      const url = `https://www.googleapis.com/books/v1/${endpoint}${queryString ? `?${queryString}` : ''}`;
+      
+      const cacheKey = `books:${endpoint}:${queryString}`;
+      const TTL = (endpoint === 'volumes' && queryString.includes('q=')) ? 60 * 60 : 24 * 60 * 60; // 1 hour for search, 24 hours for details
 
       const data = await fetchWithCache(cacheKey, TTL, async () => {
-        const response = await fetch(url);
+        const headers: Record<string, string> = {};
+        headers.referer = req.headers.referer || req.headers.origin || `https://${req.get('host')}/`;
+
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
           const errText = await response.text();
-          throw new Error(`Google Books API error: ${response.status} ${errText}`);
+          const err: any = new Error(`Google Books API error: ${response.status} ${errText}`);
+          err.status = response.status;
+          throw err;
         }
 
         return await response.json();
@@ -262,8 +304,10 @@ async function startServer() {
       res.setHeader('Cache-Control', `public, max-age=${TTL}`);
       res.json(data);
     } catch (error: any) {
-      console.error('Google Books API error:', error);
-      res.status(500).json({ error: error.message });
+      if (error.status !== 429) {
+        console.error('Google Books API error:', error.message || error);
+      }
+      res.status(error.status || 500).json({ error: error.message });
     }
   });
 

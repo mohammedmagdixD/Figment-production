@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, Music } from 'lucide-react';
+import { fetchWithBackoff } from '../services/api';
 import { UniversalListItem } from './UniversalListItem';
 
 interface ThemeSongItemProps {
@@ -31,7 +32,7 @@ export function ThemeSongItem({ themeString }: ThemeSongItemProps) {
           }
         }
 
-        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`);
+        const res = await fetchWithBackoff(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`);
         const data = await res.json();
         
         if (isMounted && data.results && data.results.length > 0) {
